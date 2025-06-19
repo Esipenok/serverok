@@ -1,0 +1,54 @@
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T08:32:42.175Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T08:32:42.181Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T08:32:42.181Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T08:32:42.206Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T08:32:42.207Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T08:32:42.255Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T08:32:42.268Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T08:32:42.276Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T08:32:42.276Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T08:33:00.784Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T08:33:00.790Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T08:33:00.791Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T08:33:00.810Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T08:33:00.810Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T08:33:00.844Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T08:33:00.851Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T08:33:00.865Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T08:33:00.865Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T08:35:37.283Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T08:35:37.287Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T08:35:37.288Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T08:35:37.304Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T08:35:37.305Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T08:35:37.335Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T08:35:37.351Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T08:35:37.354Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T08:35:37.354Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T08:55:34.311Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T08:55:34.316Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T08:55:34.316Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T08:55:34.333Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T08:55:34.334Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T08:55:34.365Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T08:55:34.377Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T08:55:34.380Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T08:55:34.381Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T09:02:19.754Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T09:02:19.759Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T09:02:19.759Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T09:02:19.778Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T09:02:19.779Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T09:02:19.819Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T09:02:19.842Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T09:02:19.846Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T09:02:19.846Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-18T09:04:23.760Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-18T09:04:23.765Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-18T09:04:23.765Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-18T09:04:23.782Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-18T09:04:23.783Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-18T09:04:23.814Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-18T09:04:23.829Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-18T09:04:23.833Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-18T09:04:23.833Z"}

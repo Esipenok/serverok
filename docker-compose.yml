@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # MongoDB сервис
+  mongodb:
+    image: mongo:7.0
+    container_name: dating_app_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-dating_app}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+
+  # Node.js сервер
+  app:
+    build: .
+    container_name: dating_app_server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password}@mongodb:27017/${MONGO_DATABASE:-dating_app}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-your_secret_key}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      BASE_URL: http://46.62.131.90:3000
+      STATIC_URL: http://46.62.131.90:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+    command: node dev-start.js
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge 
