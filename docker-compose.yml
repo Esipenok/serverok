@@ -17,6 +17,24 @@ services:
     networks:
       - app-network
 
+  # MongoDB Express (веб-интерфейс)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: dating_app_mongo_express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password}@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+    networks:
+      - app-network
+
   # Node.js сервер
   app:
     build: .
@@ -28,18 +46,19 @@ services:
       MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password}@mongodb:27017/${MONGO_DATABASE:-dating_app}?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-your_secret_key}
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
-      BASE_URL: http://46.62.131.90:3000
-      STATIC_URL: http://46.62.131.90:3000
+      BASE_URL: https://willowe.love
+      STATIC_URL: https://willowe.love
     ports:
       - "3000:3000"
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      - ./ssl:/app/ssl
     depends_on:
       - mongodb
     networks:
       - app-network
-    command: node dev-start.js
+    command: node server.js
 
 volumes:
   mongodb_data:

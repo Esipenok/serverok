@@ -13,12 +13,13 @@ RUN npm install
 # Копируем исходный код
 COPY . .
 
-# Создаем директории для загрузок и логов
-RUN mkdir -p uploads logs
+# Создаем директории для загрузок, логов и SSL-сертификатов
+RUN mkdir -p uploads logs ssl
 RUN chmod 777 uploads logs
+RUN chmod 755 ssl
 
-# Открываем порт
+# Открываем порты (HTTP и HTTPS)
 EXPOSE 3000
 
 # Запускаем приложение
-CMD ["node", "dev-start.js"] 
+CMD ["node", "server.js"] 

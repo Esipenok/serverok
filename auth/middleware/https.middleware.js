@@ -1,18 +1,28 @@
 /**
  * Middleware для перенаправления HTTP на HTTPS
- * В настоящее время отключено для работы с HTTP
  */
 const redirectToHttps = (req, res, next) => {
-  // Отключаем перенаправление на HTTPS
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  
+  if (!isSecure && process.env.NODE_ENV === 'production') {
+    const host = req.headers.host;
+    return res.redirect(301, `https://${host}${req.originalUrl}`);
+  }
+  
   next();
 };
 
 /**
  * Middleware для добавления заголовка Strict-Transport-Security
- * В настоящее время отключено для работы с HTTP
  */
 const addHstsHeader = (req, res, next) => {
-  // Отключаем добавление заголовка HSTS
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+  }
+  
   next();
 };
 

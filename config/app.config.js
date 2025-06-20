@@ -2,11 +2,11 @@
 const config = {
   // Базовый URL для API и статических файлов
   // В разработке используется http://10.0.2.2:3000 для доступа из эмулятора Android
-  // В продакшене используется HTTP
-  baseUrl: process.env.BASE_URL || 'http://46.62.131.90',
+  // В продакшене используется HTTPS с доменом willowe.love
+  baseUrl: process.env.BASE_URL || 'https://willowe.love',
   
   // URL для статических файлов (фотографии и другие ресурсы)
-  staticUrl: process.env.STATIC_URL || 'http://46.62.131.90',
+  staticUrl: process.env.STATIC_URL || 'https://willowe.love',
   
   // Порт для сервера
   port: process.env.PORT || 3000,

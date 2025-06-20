@@ -31,8 +31,8 @@ const helmetConfig = {
       objectSrc: ["'none'"], // Запрещаем объекты (Flash и т.д.)
       mediaSrc: ["'self'", "https:", "http:"], // Разрешаем медиа из любых источников
       frameSrc: ["'none'"], // Запрещаем фреймы
-      // Отключаем автоматическое обновление HTTP до HTTPS
-      // upgradeInsecureRequests: [] 
+      // В продакшене включаем автоматическое обновление HTTP до HTTPS
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
     }
   },
   // Cross-Origin Embedder Policy - контролирует загрузку ресурсов с других источников
@@ -47,8 +47,12 @@ const helmetConfig = {
   frameguard: { action: "deny" },
   // Hide Powered By - скрывает информацию о сервере
   hidePoweredBy: true,
-  // Отключаем HSTS для работы с HTTP
-  hsts: false,
+  // HSTS - включаем в production
+  hsts: process.env.NODE_ENV === 'production' ? {
+    maxAge: 31536000, // 1 год
+    includeSubDomains: true,
+    preload: true
+  } : false,
   // No Sniff - предотвращает MIME-sniffing
   noSniff: true,
   // Referrer Policy - контролирует, какая информация о реферере передается

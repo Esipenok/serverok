@@ -7,6 +7,7 @@ const { errorHandler } = require('./auth/middleware/error.middleware');
 const { corsOptions, helmetConfig, cookieParser } = require('./security/config');
 const { standardLimiter } = require('./auth/middleware/rate-limiter');
 const { protectFromInjection } = require('./auth/middleware/validation.middleware');
+const { redirectToHttps, addHstsHeader } = require('./auth/middleware/https.middleware');
 const appConfig = require('./config/app.config');
 const authRoutes = require('./auth/routes/auth.routes');
 const userRoutes = require('./users/routes/user.routes');
@@ -30,6 +31,12 @@ const app = express();
 
 // Настройка доверия к прокси для работы с Nginx
 app.set('trust proxy', true);
+
+// Перенаправление HTTP на HTTPS в production
+if (process.env.NODE_ENV === 'production') {
+  app.use(redirectToHttps);
+  app.use(addHstsHeader);
+}
 
 // Базовые middleware безопасности
 app.use(helmet(helmetConfig));
