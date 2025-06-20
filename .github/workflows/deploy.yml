@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Получаем всю историю для git archive
         
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.8.0
@@ -47,25 +49,11 @@ jobs:
           echo "Listing files in workspace:"
           ls -la
           
-      - name: Create exclude file
-        run: |
-          cat > exclude.txt << 'EOL'
-          node_modules/
-          .git/
-          uploads/*
-          logs/*
-          *.tar.gz
-          *.zip
-          temp/*
-          .vscode/
-          .idea/
-          *.log
-          EOL
-          
       - name: Create deployment archive
         run: |
-          echo "Creating archive..."
-          tar -czf server_update.tar.gz --exclude-from=exclude.txt .
+          echo "Creating archive using git archive..."
+          # Создаем архив из текущего коммита
+          git archive --format=tar HEAD | gzip > server_update.tar.gz
           
           if [ $? -ne 0 ]; then
             echo "::error::Ошибка при создании архива"
@@ -160,4 +148,4 @@ jobs:
       - name: Cleanup
         run: |
           echo "Cleaning up temporary files..."
-          rm -f server_update.tar.gz deploy_server.sh exclude.txt 
+          rm -f server_update.tar.gz deploy_server.sh 
