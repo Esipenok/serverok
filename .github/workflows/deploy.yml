@@ -24,7 +24,7 @@ jobs:
           
       - name: Create deployment archive
         run: |
-          tar --exclude='node_modules' --exclude='.git' --exclude='uploads/*' \
+          tar --warning=no-file-changed --exclude='node_modules' --exclude='.git' --exclude='uploads/*' \
               --exclude='logs/*' --exclude='*.tar.gz' --exclude='*.zip' \
               --exclude='temp/*' --exclude='.vscode' --exclude='.idea' \
               --exclude='*.log' -czf server_update.tar.gz .
