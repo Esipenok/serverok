@@ -22,12 +22,57 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
           
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::SSH_PRIVATE_KEY секрет не установлен или пустой"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then
+            echo "::error::SSH_USER секрет не установлен или пустой"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_IP }}" ]; then
+            echo "::error::SERVER_IP секрет не установлен или пустой"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_PATH }}" ]; then
+            echo "::error::SERVER_PATH секрет не установлен или пустой"
+            exit 1
+          fi
+          echo "Все необходимые секреты установлены"
+          
+      - name: List files before archive
+        run: |
+          echo "Listing files in workspace:"
+          ls -la
+          
+      - name: Create exclude file
+        run: |
+          cat > exclude.txt << 'EOL'
+          node_modules/
+          .git/
+          uploads/*
+          logs/*
+          *.tar.gz
+          *.zip
+          temp/*
+          .vscode/
+          .idea/
+          *.log
+          EOL
+          
       - name: Create deployment archive
         run: |
-          tar --warning=no-file-changed --exclude='node_modules' --exclude='.git' --exclude='uploads/*' \
-              --exclude='logs/*' --exclude='*.tar.gz' --exclude='*.zip' \
-              --exclude='temp/*' --exclude='.vscode' --exclude='.idea' \
-              --exclude='*.log' -czf server_update.tar.gz .
+          echo "Creating archive..."
+          tar -czf server_update.tar.gz --exclude-from=exclude.txt .
+          
+          if [ $? -ne 0 ]; then
+            echo "::error::Ошибка при создании архива"
+            exit 1
+          fi
+          
+          echo "Archive created successfully:"
           ls -lh server_update.tar.gz
           
       - name: Create deployment script
@@ -96,15 +141,23 @@ jobs:
           
           chmod +x deploy_server.sh
           
+      - name: Test SSH connection
+        run: |
+          echo "Testing SSH connection to server..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "echo 'SSH connection successful'"
+          
       - name: Copy files to server
         run: |
+          echo "Copying files to server..."
           scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
           scp -o StrictHostKeyChecking=no deploy_server.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
           
       - name: Execute deployment script on server
         run: |
+          echo "Executing deployment script on server..."
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.SERVER_PATH }} && bash deploy_server.sh"
           
       - name: Cleanup
         run: |
-          rm -f server_update.tar.gz deploy_server.sh 
+          echo "Cleaning up temporary files..."
+          rm -f server_update.tar.gz deploy_server.sh exclude.txt 
