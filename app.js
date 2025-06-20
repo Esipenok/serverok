@@ -120,13 +120,9 @@ console.log('[Server] Configuration:', {
   port: appConfig.port
 });
 
-// Эндпоинт для проверки работоспособности сервера
+// Health check endpoint для проверки работоспособности API
 app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json({ status: 'success', message: 'API работает' });
 });
 
 // Остальные маршруты

@@ -1,0 +1,110 @@
+name: Deploy to Production Server
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          
+      - name: Create deployment archive
+        run: |
+          tar --exclude='node_modules' --exclude='.git' --exclude='uploads/*' \
+              --exclude='logs/*' --exclude='*.tar.gz' --exclude='*.zip' \
+              --exclude='temp/*' --exclude='.vscode' --exclude='.idea' \
+              --exclude='*.log' -czf server_update.tar.gz .
+          ls -lh server_update.tar.gz
+          
+      - name: Create deployment script
+        run: |
+          cat > deploy_server.sh << 'EOL'
+          #!/bin/bash
+          # Скрипт для обновления API-сервера на удаленном сервере
+          
+          set -e  # Остановка при ошибках
+          
+          echo "=== ОБНОВЛЕНИЕ API-СЕРВЕРА ==="
+          echo "Текущая директория: $(pwd)"
+          
+          # Проверяем наличие архива
+          if [ ! -f "server_update.tar.gz" ]; then
+              echo "Ошибка: Архив server_update.tar.gz не найден"
+              exit 1
+          fi
+          
+          # Создаем резервную копию
+          echo "Создание резервной копии..."
+          BACKUP_DIR="backup_$(date +%Y%m%d_%H%M%S)"
+          mkdir -p $BACKUP_DIR
+          cp -r app.js server.js package.json config auth users matches fast_match marketprofiles qr complain one_night filter_* docker-compose.yml $BACKUP_DIR/ 2>/dev/null || true
+          echo "Резервная копия создана в $BACKUP_DIR"
+          
+          # Останавливаем контейнеры
+          echo "Останавливаем контейнеры Docker..."
+          docker-compose down
+          
+          # Распаковываем новую версию
+          echo "Распаковка новой версии..."
+          tar -xzf server_update.tar.gz
+          rm server_update.tar.gz
+          
+          # Устанавливаем зависимости
+          echo "Установка зависимостей..."
+          npm install --production
+          
+          # Запускаем контейнеры
+          echo "Запуск контейнеров Docker..."
+          docker-compose up -d
+          
+          # Ждем запуска
+          echo "Ожидание запуска сервера (10 секунд)..."
+          sleep 10
+          
+          # Проверяем статус
+          echo "Проверка статуса контейнеров..."
+          docker ps
+          
+          # Проверяем работоспособность API
+          echo "Проверка API..."
+          HEALTH_CHECK=$(curl -s http://localhost:3000/api/health || echo "FAIL")
+          echo "Ответ от API: $HEALTH_CHECK"
+          
+          if [[ "$HEALTH_CHECK" == *"success"* ]]; then
+              echo "✅ API работает корректно"
+          else
+              echo "⚠️ API не отвечает или отвечает с ошибкой"
+              echo "Проверьте логи: docker logs dating_app_server"
+          fi
+          
+          echo "=== ОБНОВЛЕНИЕ ЗАВЕРШЕНО ==="
+          EOL
+          
+          chmod +x deploy_server.sh
+          
+      - name: Copy files to server
+        run: |
+          scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
+          scp -o StrictHostKeyChecking=no deploy_server.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
+          
+      - name: Execute deployment script on server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.SERVER_PATH }} && bash deploy_server.sh"
+          
+      - name: Cleanup
+        run: |
+          rm -f server_update.tar.gz deploy_server.sh 
