@@ -80,12 +80,21 @@ jobs:
               exit 1
           fi
           
-          # Создаем резервную копию
+          # Создаем директорию для бэкапов, если её нет
+          BACKUPS_DIR="backups"
+          mkdir -p $BACKUPS_DIR
+          
+          # Создаем резервную копию в директории backups
           echo "Создание резервной копии..."
-          BACKUP_DIR="backup_$(date +%Y%m%d_%H%M%S)"
+          BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+          BACKUP_DIR="${BACKUPS_DIR}/backup_${BACKUP_DATE}"
           mkdir -p $BACKUP_DIR
           cp -r app.js server.js package.json config auth users matches fast_match marketprofiles qr complain one_night filter_* docker-compose.yml $BACKUP_DIR/ 2>/dev/null || true
           echo "Резервная копия создана в $BACKUP_DIR"
+          
+          # Очистка старых бэкапов (оставляем только 5 последних)
+          echo "Очистка старых бэкапов..."
+          ls -1t $BACKUPS_DIR | tail -n +6 | xargs -I {} rm -rf $BACKUPS_DIR/{}
           
           # Останавливаем контейнеры
           echo "Останавливаем контейнеры Docker..."
