@@ -100,10 +100,40 @@ jobs:
           echo "Останавливаем контейнеры Docker..."
           docker-compose down
           
+          # Создаем список файлов и директорий, которые нужно сохранить
+          echo "Создание списка файлов и директорий для сохранения..."
+          cat > preserve_list.txt << 'EOF'
+          node_modules
+          .env
+          uploads
+          logs
+          backups
+          ssl
+          EOF
+          
+          # Сохраняем важные файлы и директории
+          echo "Сохранение важных файлов и директорий..."
+          mkdir -p temp_preserve
+          while IFS= read -r item; do
+            if [ -e "$item" ]; then
+              echo "Сохранение: $item"
+              cp -r "$item" temp_preserve/ 2>/dev/null || true
+            fi
+          done < preserve_list.txt
+          
+          # Очищаем директорию проекта (кроме временных файлов и архива)
+          echo "Очистка директории проекта..."
+          find . -mindepth 1 -maxdepth 1 -not -name "server_update.tar.gz" -not -name "deploy_server.sh" -not -name "temp_preserve" -not -name "preserve_list.txt" -exec rm -rf {} \;
+          
           # Распаковываем новую версию
           echo "Распаковка новой версии..."
           tar -xzf server_update.tar.gz
-          rm server_update.tar.gz
+          rm server_update.tar.gz preserve_list.txt
+          
+          # Восстанавливаем сохраненные файлы и директории
+          echo "Восстановление сохраненных файлов и директорий..."
+          cp -r temp_preserve/* . 2>/dev/null || true
+          rm -rf temp_preserve
           
           # Устанавливаем зависимости
           echo "Установка зависимостей..."
