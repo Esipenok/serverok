@@ -9,6 +9,14 @@ const Complaint = require('../../complain/models/complaint');
 
 class DeleteAllUserController {
   static async deleteUser(req, res) {
+    console.log('[DeleteUser] ===== КОНТРОЛЛЕР ВЫЗВАН =====');
+    console.log('[DeleteUser] Полный URL:', req.url);
+    console.log('[DeleteUser] Метод:', req.method);
+    console.log('[DeleteUser] Параметры:', req.params);
+    console.log('[DeleteUser] Query:', req.query);
+    console.log('[DeleteUser] Body:', req.body);
+    console.log('[DeleteUser] Headers:', req.headers);
+    
     try {
       const { userId } = req.params;
       console.log(`[DeleteUser] Запрос на удаление пользователя с ID: ${userId}`);
