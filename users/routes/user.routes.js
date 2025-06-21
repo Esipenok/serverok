@@ -8,15 +8,11 @@ const photosRoutes = require('../photos/photos.routes');
 const { upload } = require('../photos/photos.middleware');
 const fetch = require('node-fetch');
 const blockUnblockRoutes = require('../block_unblock_users');
-const deleteAllUserRoutes = require('../delete_all_user/delete_all_user.routes');
-
-// Маршруты удаления всех данных пользователя (подключаем ПЕРВЫМИ)
-router.use('/delete', deleteAllUserRoutes);
 
 // Маршруты блокировки/разблокировки
 router.use('/block', blockUnblockRoutes);
 
-// Используем маршруты для фотографий (подключаем ПОСЛЕ)
+// Используем маршруты для фотографий
 router.use('/', photosRoutes);
 
 // Эндпоинт для сохранения отсканированного пользователя в поле qr

@@ -26,6 +26,7 @@ const complaintRoutes = require('./complain/routes/complaintRoutes');
 const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
+const deleteAllUserDataRoutes = require('./users/delete_all_user/delete_all_user.routes');
 
 const app = express();
 
@@ -143,6 +144,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/filter-one-night', oneNightRoutes);
 app.use('/api/one-night', oneNightInviteRoutes);
 app.use('/api/one-night-status', oneNightStatusRoutes);
+app.use('/api/delete-all-user-data', deleteAllUserDataRoutes);
 
 // Error handling
 app.use(errorHandler);
