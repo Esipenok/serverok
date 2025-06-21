@@ -39,39 +39,46 @@ BACKUP_NAME="$BackupName"
 BACKUP_DIR="\${BACKUPS_DIR}/\$BACKUP_NAME"
 mkdir -p \$BACKUP_DIR
 
-# Список файлов и директорий для исключения
-echo "Создание списка исключений..."
-cat > exclude_list.txt << 'EOF'
-./node_modules
-./uploads
-./logs
-./backups
-./.git
-./.github
-./.vscode
-./.idea
-./temp
-./ssl
-./*.log
-./*.tar.gz
-./*.zip
-./restore_server.sh
-./create_backup.sh
-./exclude_list.txt
-EOF
+# Список директорий для исключения
+EXCLUDE_DIRS=("node_modules" "uploads" "logs" "backups" ".git" ".github" ".vscode" ".idea" "temp" "ssl")
 
-# Копируем все файлы в бэкап, кроме исключений
-echo "Копирование файлов в бэкап..."
-rsync -av --exclude-from=exclude_list.txt . \$BACKUP_DIR/ || true
+# Копируем все файлы в корне
+echo "Копирование файлов в корне..."
+for file in *; do
+  # Проверяем, не находится ли файл в списке исключений
+  skip=false
+  for exclude in "\${EXCLUDE_DIRS[@]}"; do
+    if [ "\$file" == "\$exclude" ]; then
+      skip=true
+      break
+    fi
+  done
+  
+  # Если файл не в списке исключений и это не временный файл, копируем его
+  if [ "\$skip" == "false" ] && [ "\$file" != "create_backup.sh" ] && [ "\$file" != "restore_server.sh" ]; then
+    echo "Копирование: \$file"
+    cp -r "\$file" "\$BACKUP_DIR/" 2>/dev/null || true
+  fi
+done
 
-# Если rsync не установлен, используем find и cp
-if [ \$? -ne 0 ]; then
-  echo "rsync не найден, используем find и cp..."
-  find . -type f -not -path "./node_modules/*" -not -path "./uploads/*" -not -path "./logs/*" -not -path "./backups/*" -not -path "./.git/*" -not -path "./.github/*" -not -path "./.vscode/*" -not -path "./.idea/*" -not -path "./temp/*" -not -path "./ssl/*" -not -name "*.log" -not -name "*.tar.gz" -not -name "*.zip" -not -name "restore_server.sh" -not -name "create_backup.sh" -not -name "exclude_list.txt" -exec cp --parents {} \$BACKUP_DIR/ \;
-fi
-
-# Удаляем временный файл
-rm -f exclude_list.txt
+# Копируем скрытые файлы в корне (кроме .git, .github и т.д.)
+echo "Копирование скрытых файлов..."
+for file in .[!.]*; do
+  # Проверяем, не находится ли файл в списке исключений
+  skip=false
+  for exclude in "\${EXCLUDE_DIRS[@]}"; do
+    if [ "\$file" == ".\$exclude" ]; then
+      skip=true
+      break
+    fi
+  done
+  
+  # Если файл не в списке исключений, копируем его
+  if [ "\$skip" == "false" ] && [ "\$file" != ".git" ] && [ "\$file" != ".github" ]; then
+    echo "Копирование: \$file"
+    cp -r "\$file" "\$BACKUP_DIR/" 2>/dev/null || true
+  fi
+done
 
 echo "Резервная копия создана в \$BACKUP_DIR"
 
@@ -86,6 +93,9 @@ cat > "\$BACKUP_DIR/backup_info.txt" << EOF
 Версии:
 Node: \$(node -v)
 NPM: \$(npm -v)
+
+Содержимое бэкапа:
+\$(find \$BACKUP_DIR -type f | sort)
 EOF
 
 echo "=== СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ ЗАВЕРШЕНО ==="
