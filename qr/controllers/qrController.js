@@ -271,8 +271,7 @@ exports.claimTransferableQr = async (req, res) => {
  */
 exports.scanQr = async (req, res) => {
   try {
-    const { qrId } = req.params;
-    const { userId } = req.body; // ID пользователя, который сканирует QR-код
+    const { qrId, type } = req.params;
     
     if (!qrId) {
       return res.status(400).json({ success: false, message: 'QR ID обязателен' });
@@ -295,26 +294,39 @@ exports.scanQr = async (req, res) => {
     qrCode.last_scanned_at = new Date();
     await qrCode.save();
     
-    // Определяем, может ли пользователь присвоить QR код
-    const canClaim = qrCode.is_permanent === false && 
-                    (!userId || qrCode.user_id !== userId);
-    
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
-    // Возвращаем информацию о QR-коде с дополнительными полями для клиента
+    // Если у QR кода есть владельец, получаем его данные
+    let userData = null;
+    if (qrCode.user_id) {
+      try {
+        const User = require('../../auth/models/User');
+        const user = await User.findOne({ userId: qrCode.user_id });
+        if (user) {
+          userData = {
+            userId: user.userId,
+            name: user.name || 'Пользователь',
+            photos: user.photos || []
+          };
+        }
+      } catch (error) {
+        console.error('Ошибка при получении данных пользователя:', error);
+      }
+    }
+    
+    // Возвращаем информацию о QR-коде
     return res.status(200).json({
       success: true,
       data: {
+        qr_id: qrCode.qr_id,
         qrCode: {
           ...qrCode.toObject(),
-          description: qrCode.message || '', // Для совместимости с клиентом
-          custom_message: qrCode.message || '', // Для совместимости с клиентом
-          owner_id: qrCode.user_id,
-          owner_name: 'User ' + qrCode.user_id, // Необходима интеграция с сервисом пользователей
-          can_claim: canClaim,
+          description: qrCode.message || '',
+          custom_message: qrCode.message || '',
           qr_url: `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`,
           image_url: exports.getQrImageUrl(qrCode.qr_id, baseUrl)
         },
+        user_data: userData,
         isPermanent: qrCode.is_permanent,
         message: qrCode.message
       }
@@ -444,6 +456,46 @@ exports.generateQrImage = async (req, res) => {
     res.end(Buffer.from(qrImage.split(',')[1], 'base64'));
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
+    return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
+  }
+};
+
+/**
+ * Отвязывает пользователя от передаваемого QR кода
+ */
+exports.unlinkTransferableQr = async (req, res) => {
+  try {
+    const { qrId } = req.params;
+    
+    if (!qrId) {
+      return res.status(400).json({ success: false, message: 'QR ID обязателен' });
+    }
+
+    // Находим QR-код
+    const qrCode = await QrCode.findOne({ qr_id: qrId });
+    
+    if (!qrCode) {
+      return res.status(404).json({ success: false, message: 'QR код не найден' });
+    }
+
+    // Проверяем, что это передаваемый QR-код
+    if (qrCode.is_permanent) {
+      return res.status(400).json({ success: false, message: 'Невозможно отвязать постоянный QR код' });
+    }
+
+    // Отвязываем пользователя
+    qrCode.user_id = null;
+    qrCode.message = '';
+    qrCode.last_unlinked_at = new Date();
+    
+    await qrCode.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: 'QR код успешно отвязан от пользователя'
+    });
+  } catch (error) {
+    console.error(`Ошибка при отвязке QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
   }
 }; 

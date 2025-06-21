@@ -29,12 +29,15 @@ router.post('/transferable', dummyAuth, qrController.createTransferableQr);
 router.post('/claim/:qrId', dummyAuth, qrController.claimTransferableQr);
 
 // Сканировать QR-код
-router.get('/scan/:qrId', dummyAuth, qrController.scanQr);
+router.get('/scan/:type/:qrId', dummyAuth, qrController.scanQr);
 
 // Удалить QR-код
 router.delete('/:qrId', dummyAuth, qrController.deleteQrCode);
 
 // Создать партию передаваемых QR-кодов (только для админов)
 router.post('/batch/transferable', dummyAuth, qrController.generateTransferableBatch);
+
+// Отвязать передаваемый QR-код от пользователя
+router.post('/unlink/:qrId', dummyAuth, qrController.unlinkTransferableQr);
 
 module.exports = router; 

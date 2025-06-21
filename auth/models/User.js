@@ -155,6 +155,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     ref: 'User'
   }],
+  // Поле для хранения отсканированных QR пользователей
+  qr: [{
+    type: String,
+    ref: 'User'
+  }],
   // Поля для аутентификации
   password: {
     type: String,
