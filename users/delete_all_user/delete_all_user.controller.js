@@ -5,6 +5,7 @@ const MarketCard = require('../../marketprofiles/models/MarketCard');
 const Match = require('../../matches/models/match.model');
 const QrCode = require('../../qr/models/QrCode');
 const FastMatch = require('../../fast_match/models/fast_match.model');
+const Complaint = require('../../complain/models/complaint');
 
 class DeleteAllUserController {
   static async deleteUser(req, res) {
@@ -12,10 +13,10 @@ class DeleteAllUserController {
       const { userId } = req.params;
       console.log(`[DeleteUser] Запрос на удаление пользователя с ID: ${userId}`);
 
-      // Находим пользователя
-      const user = await User.findOne({ userId });
+      // Находим пользователя по полю userId (строка), а не по _id (ObjectId)
+      const user = await User.findOne({ userId: userId });
       if (!user) {
-        console.log(`[DeleteUser] Пользователь с ID ${userId} не найден`);
+        console.log(`[DeleteUser] Пользователь с userId ${userId} не найден`);
         return res.status(404).json({
           status: 'error',
           message: 'Пользователь не найден'
@@ -33,44 +34,59 @@ class DeleteAllUserController {
       }
 
       // 2. Удаляем все маркет карточки пользователя
-      if (user.market_cards && user.market_cards.length > 0) {
-        try {
-          await MarketCard.deleteMany({ marketCardId: { $in: user.market_cards } });
-        } catch (error) {
-          console.error('Ошибка при удалении маркет карточек:', error);
-        }
+      try {
+        const deletedMarketCards = await MarketCard.deleteMany({ userId: userId });
+        console.log(`[DeleteUser] Удалено маркет карточек: ${deletedMarketCards.deletedCount}`);
+      } catch (error) {
+        console.error('Ошибка при удалении маркет карточек:', error);
       }
 
       // 3. Удаляем все мэтчи пользователя
       try {
-        await Match.deleteMany({
+        const deletedMatches = await Match.deleteMany({
           $or: [
             { user1: userId },
             { user2: userId }
           ]
         });
+        console.log(`[DeleteUser] Удалено мэтчей: ${deletedMatches.deletedCount}`);
       } catch (error) {
         console.error('Ошибка при удалении мэтчей:', error);
       }
 
       // 4. Удаляем все QR-коды пользователя
       try {
-        await QrCode.deleteMany({
+        const deletedQrCodes = await QrCode.deleteMany({
           $or: [
             { user_id: userId },
             { last_claimed_by: userId }
           ]
         });
+        console.log(`[DeleteUser] Удалено QR-кодов: ${deletedQrCodes.deletedCount}`);
       } catch (error) {
         console.error('Ошибка при удалении QR-кодов:', error);
       }
 
-      // 5. Удаляем все связанные данные пользователя
+      // 5. Удаляем все жалобы пользователя (где он отправитель или получатель)
+      try {
+        const deletedComplaints = await Complaint.deleteMany({
+          $or: [
+            { senderId: userId },
+            { reportedUserId: userId }
+          ]
+        });
+        console.log(`[DeleteUser] Удалено жалоб: ${deletedComplaints.deletedCount}`);
+      } catch (error) {
+        console.error('Ошибка при удалении жалоб:', error);
+      }
+
+      // 6. Удаляем все связанные данные пользователя
       await Promise.all([
-        User.deleteOne({ userId }),
+        User.deleteOne({ userId: userId }),
         Match.deleteMany({ $or: [{ user1: userId }, { user2: userId }] }),
         FastMatch.deleteMany({ $or: [{ user1: userId }, { user2: userId }] }),
-        MarketCard.deleteMany({ userId })
+        MarketCard.deleteMany({ userId: userId }),
+        Complaint.deleteMany({ $or: [{ senderId: userId }, { reportedUserId: userId }] })
       ]);
 
       console.log(`[DeleteUser] Пользователь ${userId} успешно удален`);
