@@ -20,91 +20,70 @@ Write-Host "Текущая директория: $(Get-Location)" -ForegroundCol
 
 # Создаем скрипт создания бэкапа
 Write-Host "Создание скрипта для создания бэкапа..." -ForegroundColor Yellow
-$BackupScript = @"
+$BackupScript = @'
 #!/bin/bash
 # Скрипт для создания резервной копии вручную
 
 set -e  # Остановка при ошибках
 
 echo "=== СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ ==="
-echo "Текущая директория: \$(pwd)"
+echo "Текущая директория: $(pwd)"
 
 # Создаем директорию для бэкапов, если её нет
-BACKUPS_DIR="backups"
-mkdir -p \$BACKUPS_DIR
+mkdir -p backups
 
 # Создаем резервную копию в директории backups
 echo "Создание резервной копии..."
-BACKUP_NAME="$BackupName"
-BACKUP_DIR="\${BACKUPS_DIR}/\$BACKUP_NAME"
-mkdir -p \$BACKUP_DIR
+BACKUP_NAME="BACKUP_NAME_PLACEHOLDER"
+BACKUP_DIR="backups/$BACKUP_NAME"
+mkdir -p "$BACKUP_DIR"
 
 # Список директорий для исключения
-EXCLUDE_DIRS=("node_modules" "uploads" "logs" "backups" ".git" ".github" ".vscode" ".idea" "temp" "ssl")
+EXCLUDE_DIRS="node_modules uploads logs backups .git .github .vscode .idea temp ssl"
 
 # Копируем все файлы в корне
 echo "Копирование файлов в корне..."
-for file in *; do
-  # Проверяем, не находится ли файл в списке исключений
-  skip=false
-  for exclude in "\${EXCLUDE_DIRS[@]}"; do
-    if [ "\$file" == "\$exclude" ]; then
-      skip=true
-      break
-    fi
-  done
-  
-  # Если файл не в списке исключений и это не временный файл, копируем его
-  if [ "\$skip" == "false" ] && [ "\$file" != "create_backup.sh" ] && [ "\$file" != "restore_server.sh" ]; then
-    echo "Копирование: \$file"
-    cp -r "\$file" "\$BACKUP_DIR/" 2>/dev/null || true
-  fi
+for file in $(ls -A | grep -v "^\." | grep -v "^node_modules$" | grep -v "^uploads$" | grep -v "^logs$" | grep -v "^backups$" | grep -v "^temp$" | grep -v "^ssl$" | grep -v "create_backup.sh" | grep -v "restore_server.sh" | grep -v "server_update.tar.gz"); do
+  echo "Копирование: $file"
+  cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
 done
 
 # Копируем скрытые файлы в корне (кроме .git, .github и т.д.)
 echo "Копирование скрытых файлов..."
-for file in .[!.]*; do
-  # Проверяем, не находится ли файл в списке исключений
-  skip=false
-  for exclude in "\${EXCLUDE_DIRS[@]}"; do
-    if [ "\$file" == ".\$exclude" ]; then
-      skip=true
-      break
-    fi
-  done
-  
-  # Если файл не в списке исключений, копируем его
-  if [ "\$skip" == "false" ] && [ "\$file" != ".git" ] && [ "\$file" != ".github" ]; then
-    echo "Копирование: \$file"
-    cp -r "\$file" "\$BACKUP_DIR/" 2>/dev/null || true
-  fi
+for file in $(ls -A | grep "^\." | grep -v "^\.git$" | grep -v "^\.github$" | grep -v "^\.vscode$" | grep -v "^\.idea$"); do
+  echo "Копирование: $file"
+  cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
 done
 
-echo "Резервная копия создана в \$BACKUP_DIR"
+echo "Резервная копия создана в $BACKUP_DIR"
 
 # Создаем файл с информацией о бэкапе
 echo "Создание информации о бэкапе..."
-cat > "\$BACKUP_DIR/backup_info.txt" << EOF
-Дата создания: \$(date)
+cat > "$BACKUP_DIR/backup_info.txt" << EOF
+Дата создания: $(date)
 Описание: Ручной бэкап
-Контейнеры:
-\$(docker ps -a)
-
-Версии:
-Node: \$(node -v)
-NPM: \$(npm -v)
 
 Содержимое бэкапа:
-\$(find \$BACKUP_DIR -type f | sort)
+$(find $BACKUP_DIR -type f | grep -v backup_info.txt | sort)
 EOF
 
+# Выводим список файлов в бэкапе для проверки
+echo "Файлы в бэкапе:"
+ls -la "$BACKUP_DIR"
+
 echo "=== СОЗДАНИЕ РЕЗЕРВНОЙ КОПИИ ЗАВЕРШЕНО ==="
-echo "Бэкап создан: \$BACKUP_NAME"
-"@
+echo "Бэкап создан: $BACKUP_NAME"
+'@
+
+# Заменяем плейсхолдер на имя бэкапа
+$BackupScript = $BackupScript.Replace("BACKUP_NAME_PLACEHOLDER", $BackupName)
+
+# Преобразуем Windows переносы строк (CRLF) в Unix (LF)
+$BackupScript = $BackupScript.Replace("`r`n", "`n")
 
 # Сохраняем скрипт
 $BackupScriptPath = "create_backup.sh"
-$BackupScript | Out-File -FilePath $BackupScriptPath -Encoding ASCII
+[System.IO.File]::WriteAllText($BackupScriptPath, $BackupScript)
 
 # Копируем скрипт на сервер
 Write-Host "Копирование скрипта на сервер..." -ForegroundColor Yellow

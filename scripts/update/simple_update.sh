@@ -19,44 +19,20 @@ BACKUP_DIR="backup_$(date +%Y%m%d_%H%M%S)"
 mkdir -p $BACKUP_DIR
 
 # Список директорий для исключения
-EXCLUDE_DIRS=("node_modules" "uploads" "logs" "backups" ".git" ".github" ".vscode" ".idea" "temp" "ssl")
+EXCLUDE_DIRS="node_modules uploads logs backups .git .github .vscode .idea temp ssl"
 
 # Копируем все файлы в корне
 echo "Копирование файлов в корне..."
-for file in *; do
-  # Проверяем, не находится ли файл в списке исключений
-  skip=false
-  for exclude in "${EXCLUDE_DIRS[@]}"; do
-    if [ "$file" == "$exclude" ]; then
-      skip=true
-      break
-    fi
-  done
-  
-  # Если файл не в списке исключений и это не временный файл, копируем его
-  if [ "$skip" == "false" ] && [ "$file" != "server_update.tar.gz" ] && [ "$file" != "simple_update.sh" ]; then
-    echo "Копирование: $file"
-    cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
-  fi
+for file in $(ls -A | grep -v "^\." | grep -v "^node_modules$" | grep -v "^uploads$" | grep -v "^logs$" | grep -v "^backups$" | grep -v "^temp$" | grep -v "^ssl$" | grep -v "server_update.tar.gz" | grep -v "simple_update.sh"); do
+  echo "Копирование: $file"
+  cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
 done
 
 # Копируем скрытые файлы в корне (кроме .git, .github и т.д.)
 echo "Копирование скрытых файлов..."
-for file in .[!.]*; do
-  # Проверяем, не находится ли файл в списке исключений
-  skip=false
-  for exclude in "${EXCLUDE_DIRS[@]}"; do
-    if [ "$file" == ".$exclude" ]; then
-      skip=true
-      break
-    fi
-  done
-  
-  # Если файл не в списке исключений, копируем его
-  if [ "$skip" == "false" ] && [ "$file" != ".git" ] && [ "$file" != ".github" ]; then
-    echo "Копирование: $file"
-    cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
-  fi
+for file in $(ls -A | grep "^\." | grep -v "^\.git$" | grep -v "^\.github$" | grep -v "^\.vscode$" | grep -v "^\.idea$"); do
+  echo "Копирование: $file"
+  cp -r "$file" "$BACKUP_DIR/" 2>/dev/null || true
 done
 
 echo "Резервная копия создана в $BACKUP_DIR"
@@ -66,16 +42,14 @@ echo "Создание информации о бэкапе..."
 cat > "$BACKUP_DIR/backup_info.txt" << EOF
 Дата создания: $(date)
 Описание: Автоматический бэкап перед обновлением
-Контейнеры:
-$(docker ps -a)
-
-Версии:
-Node: $(node -v)
-NPM: $(npm -v)
 
 Содержимое бэкапа:
-$(find $BACKUP_DIR -type f | sort)
+$(find $BACKUP_DIR -type f | grep -v backup_info.txt | sort)
 EOF
+
+# Выводим список файлов в бэкапе для проверки
+echo "Файлы в бэкапе:"
+ls -la "$BACKUP_DIR"
 
 # Останавливаем контейнеры
 echo "Останавливаем контейнеры Docker..."
