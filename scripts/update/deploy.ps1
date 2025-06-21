@@ -14,7 +14,7 @@ Write-Host "Текущая директория: $(Get-Location)" -ForegroundCol
 
 # Создаем архив с исходным кодом
 Write-Host "Создание архива с исходным кодом..." -ForegroundColor Yellow
-$TarCommand = "tar --exclude='node_modules' --exclude='.git' --exclude='uploads/*' --exclude='logs/*' --exclude='*.tar.gz' --exclude='*.zip' --exclude='temp/*' --exclude='.vscode' --exclude='.idea' --exclude='*.log' -czf server_update.tar.gz ."
+$TarCommand = "tar --exclude='node_modules' --exclude='.git' --exclude='uploads/*' --exclude='logs/*' --exclude='backups/*' --exclude='ssl/*' --exclude='*.tar.gz' --exclude='*.zip' --exclude='temp/*' --exclude='.vscode' --exclude='.idea' --exclude='*.log' --exclude='restore_server.sh' --exclude='create_backup.sh' -czf server_update.tar.gz ."
 Write-Host "Команда: $TarCommand" -ForegroundColor Cyan
 
 $TarResult = Invoke-Expression $TarCommand
@@ -42,7 +42,7 @@ Write-Host "Архив скопирован на сервер" -ForegroundColor 
 
 # Копируем скрипт обновления на сервер
 Write-Host "Копирование скрипта обновления на сервер..." -ForegroundColor Yellow
-$ScpScriptCommand = "scp -i `"$SshKey`" scripts/simple_update.sh ${RemoteUser}@${RemoteHost}:${RemoteDir}/"
+$ScpScriptCommand = "scp -i `"$SshKey`" scripts/update/simple_update.sh ${RemoteUser}@${RemoteHost}:${RemoteDir}/"
 Write-Host "Команда: $ScpScriptCommand" -ForegroundColor Cyan
 
 $ScpScriptResult = Invoke-Expression $ScpScriptCommand

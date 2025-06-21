@@ -61,23 +61,44 @@ echo "Путь к бэкапу: $BACKUP_PATH"
 echo "Останавливаем контейнеры Docker..."
 docker-compose down
 
-# Создаем временную директорию для сохранения важных файлов
-echo "Сохранение важных файлов..."
-mkdir -p temp_save
-cp -r .env uploads logs temp_save/ 2>/dev/null || true
+# Создаем список директорий, которые нужно сохранить
+echo "Создание списка директорий для сохранения..."
+cat > preserve_dirs.txt << 'EOF'
+node_modules
+uploads
+logs
+.env
+ssl
+backups
+EOF
 
-# Удаляем текущие файлы проекта
+# Создаем временную директорию для сохранения важных файлов
+echo "Сохранение важных файлов и директорий..."
+mkdir -p temp_save
+while IFS= read -r dir; do
+  if [ -e "$dir" ]; then
+    echo "Сохранение: $dir"
+    cp -r "$dir" temp_save/ 2>/dev/null || true
+  fi
+done < preserve_dirs.txt
+
+# Удаляем все файлы и директории, кроме исключений
 echo "Удаление текущих файлов проекта..."
-rm -rf app.js server.js package.json config auth users matches fast_match marketprofiles qr complain one_night filter_* docker-compose.yml
+find . -mindepth 1 \
+  -not -path "./temp_save*" \
+  -not -path "./preserve_dirs.txt*" \
+  -not -path "./restore_server.sh*" \
+  -not -path "./$BACKUP_DIR*" \
+  -exec rm -rf {} \; 2>/dev/null || true
 
 # Восстанавливаем файлы из бэкапа
 echo "Восстановление файлов из бэкапа..."
 cp -r "$BACKUP_PATH"/* . 2>/dev/null || true
 
-# Восстанавливаем сохраненные файлы
-echo "Восстановление сохраненных файлов..."
+# Восстанавливаем сохраненные файлы и директории
+echo "Восстановление сохраненных файлов и директорий..."
 cp -r temp_save/* . 2>/dev/null || true
-rm -rf temp_save
+rm -rf temp_save preserve_dirs.txt
 
 # Устанавливаем зависимости
 echo "Установка зависимостей..."
