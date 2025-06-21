@@ -10,15 +10,19 @@ class DeleteAllUserController {
   static async deleteUser(req, res) {
     try {
       const { userId } = req.params;
+      console.log(`[DeleteUser] Запрос на удаление пользователя с ID: ${userId}`);
 
       // Находим пользователя
       const user = await User.findOne({ userId });
       if (!user) {
+        console.log(`[DeleteUser] Пользователь с ID ${userId} не найден`);
         return res.status(404).json({
           status: 'error',
           message: 'Пользователь не найден'
         });
       }
+      console.log(`[DeleteUser] Пользователь найден: ${user.email}`);
+      
 
       // 1. Удаляем все фотографии пользователя
       const userUploadPath = path.join(__dirname, '../../../uploads/users', userId);
@@ -63,16 +67,22 @@ class DeleteAllUserController {
 
       // 5. Удаляем все связанные данные пользователя
       await Promise.all([
-        User.findByIdAndDelete(userId),
+        User.deleteOne({ userId }),
         Match.deleteMany({ $or: [{ user1: userId }, { user2: userId }] }),
         FastMatch.deleteMany({ $or: [{ user1: userId }, { user2: userId }] }),
         MarketCard.deleteMany({ userId })
       ]);
 
+      console.log(`[DeleteUser] Пользователь ${userId} успешно удален`);
       res.status(200).json({ message: 'User and all related data deleted successfully' });
     } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({ message: 'Error deleting user' });
+      console.error('[DeleteUser] Error deleting user:', error);
+      console.error('[DeleteUser] Stack trace:', error.stack);
+      res.status(500).json({ 
+        message: 'Error deleting user',
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   }
 }
