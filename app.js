@@ -96,6 +96,7 @@ app.use('/api/auth', authRoutes);
 
 // Проверка токена для маршрутов /api/users/
 app.use('/api/users', (req, res, next) => {
+  console.log('[App] Запрос к /api/users:', req.method, req.url);
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -103,6 +104,7 @@ app.use('/api/users', (req, res, next) => {
       message: 'Требуется авторизация'
     });
   }
+  console.log('[App] Авторизация прошла успешно для /api/users');
   next();
 });
 

@@ -10,14 +10,14 @@ const fetch = require('node-fetch');
 const blockUnblockRoutes = require('../block_unblock_users');
 const deleteAllUserRoutes = require('../delete_all_user/delete_all_user.routes');
 
-// Используем маршруты для фотографий
-router.use('/', photosRoutes);
+// Маршруты удаления всех данных пользователя (подключаем ПЕРВЫМИ)
+router.use('/delete', deleteAllUserRoutes);
 
 // Маршруты блокировки/разблокировки
 router.use('/block', blockUnblockRoutes);
 
-// Маршруты удаления всех данных пользователя
-router.use('/delete', deleteAllUserRoutes);
+// Используем маршруты для фотографий (подключаем ПОСЛЕ)
+router.use('/', photosRoutes);
 
 // Эндпоинт для сохранения отсканированного пользователя в поле qr
 router.post('/save-qr-scan', async (req, res) => {
