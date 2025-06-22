@@ -37,6 +37,9 @@ router.delete('/:qrId', dummyAuth, qrController.deleteQrCode);
 // Создать партию передаваемых QR-кодов (только для админов)
 router.post('/batch/transferable', dummyAuth, qrController.generateTransferableBatch);
 
+// Генерировать пустой QR-код
+router.post('/generate-empty', dummyAuth, qrController.generateEmptyQr);
+
 // Отвязать передаваемый QR-код от пользователя
 router.post('/unlink/:qrId', dummyAuth, qrController.unlinkTransferableQr);
 

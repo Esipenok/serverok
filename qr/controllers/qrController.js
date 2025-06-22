@@ -416,6 +416,47 @@ exports.generateTransferableBatch = async (req, res) => {
 };
 
 /**
+ * Генерирует один пустой передаваемый QR-код
+ */
+exports.generateEmptyQr = async (req, res) => {
+  try {
+    const { message = 'Empty QR Code' } = req.body;
+    
+    // Создаем новый пустой QR-код
+    const newQrCode = new QrCode({
+      qr_id: uuidv4(),
+      is_permanent: false,
+      is_active: true,
+      message: message,
+      created_at: new Date(),
+      user_id: null // Пустой QR код не привязан к пользователю
+    });
+
+    await newQrCode.save();
+    
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    return res.status(201).json({
+      success: true,
+      message: 'Empty QR code generated successfully',
+      data: {
+        qr_id: newQrCode.qr_id,
+        qrCode: {
+          ...newQrCode.toObject(),
+          description: newQrCode.message || '',
+          custom_message: newQrCode.message || '',
+          qr_url: `yourapp://qr/transferable/${newQrCode.qr_id}`,
+          image_url: exports.getQrImageUrl(newQrCode.qr_id, baseUrl)
+        }
+      }
+    });
+  } catch (error) {
+    console.error(`Error generating empty QR code: ${error.message}`, error.stack);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+};
+
+/**
  * Генерирует изображение QR-кода
  */
 exports.generateQrImage = async (req, res) => {
