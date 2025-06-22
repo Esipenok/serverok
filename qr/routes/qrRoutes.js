@@ -40,4 +40,7 @@ router.post('/batch/transferable', dummyAuth, qrController.generateTransferableB
 // Отвязать передаваемый QR-код от пользователя
 router.post('/unlink/:qrId', dummyAuth, qrController.unlinkTransferableQr);
 
+// Удалить отсканированного пользователя из QR списка
+router.delete('/remove-scanned-user', dummyAuth, qrController.removeScannedUser);
+
 module.exports = router; 

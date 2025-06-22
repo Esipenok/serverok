@@ -498,4 +498,56 @@ exports.unlinkTransferableQr = async (req, res) => {
     console.error(`Ошибка при отвязке QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
   }
+};
+
+/**
+ * Удаляет отсканированного пользователя из списка QR
+ */
+exports.removeScannedUser = async (req, res) => {
+  try {
+    const { userId, scannedUserId } = req.body;
+    
+    if (!userId || !scannedUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'userId и scannedUserId обязательны' 
+      });
+    }
+
+    // Находим пользователя
+    const User = require('../../auth/models/User');
+    const user = await User.findOne({ userId });
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Пользователь не найден' 
+      });
+    }
+
+    // Удаляем отсканированного пользователя из поля qr
+    const initialLength = user.qr.length;
+    user.qr = user.qr.filter(id => id !== scannedUserId);
+    
+    if (user.qr.length === initialLength) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Отсканированный пользователь не найден в списке' 
+      });
+    }
+
+    await user.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Пользователь успешно удален из QR списка',
+      data: {
+        userId: user.userId,
+        qrCount: user.qr.length
+      }
+    });
+  } catch (error) {
+    console.error(`Ошибка при удалении отсканированного пользователя: ${error.message}`, error.stack);
+    return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
+  }
 }; 
