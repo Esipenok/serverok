@@ -30,7 +30,7 @@ const { errorHandler } = require('./auth/middleware/error.middleware');
 const { validateRegistration, validateLocation } = require('./auth/middleware/validation.middleware');
 
 // Добавляем маршрут удаления пользователя прямо здесь
-const deleteAllUserDataRoutes = require('./users/delete_all_user/delete_all_user.routes');
+const deleteAllDataRoutes = require('./delete_all_data/delete_all_data.routes');
 app.use('/api/delete-all-user-data', (req, res, next) => {
   console.log('[Server] Запрос к /api/delete-all-user-data:', req.method, req.url);
   const authHeader = req.headers['authorization'];
@@ -42,7 +42,7 @@ app.use('/api/delete-all-user-data', (req, res, next) => {
   }
   console.log('[Server] Авторизация прошла успешно для /api/delete-all-user-data');
   next();
-}, deleteAllUserDataRoutes);
+}, deleteAllDataRoutes);
 
 // Подключение к базе данных
 connectDB();

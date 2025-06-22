@@ -26,7 +26,6 @@ const complaintRoutes = require('./complain/routes/complaintRoutes');
 const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
-const deleteAllUserDataRoutes = require('./users/delete_all_user/delete_all_user.routes');
 
 const app = express();
 
@@ -54,20 +53,6 @@ app.use(standardLimiter);
 // Защита от инъекций для всех маршрутов
 app.use(protectFromInjection);
 
-// Маршрут для удаления пользователя (размещаем в самом начале)
-app.use('/api/delete-all-user-data', (req, res, next) => {
-  console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
-  const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'Требуется авторизация'
-    });
-  }
-  console.log('[App] Авторизация прошла успешно для /api/delete-all-user-data');
-  next();
-}, deleteAllUserDataRoutes);
-
 // Middleware для логирования запросов
 app.use((req, res, next) => {
   console.log('[Request] Received:', {
@@ -77,32 +62,6 @@ app.use((req, res, next) => {
     body: req.body,
     timestamp: new Date().toISOString()
   });
-  next();
-});
-
-// Дополнительные проверки безопасности для маршрутов аутентификации
-app.use('/api/auth', (req, res, next) => {
-  // Проверяем Content-Type
-  if (req.method === 'POST' && !req.is('application/json')) {
-    return res.status(415).json({
-      status: 'error',
-      message: 'Поддерживается только Content-Type: application/json'
-    });
-  }
-
-  // Проверяем наличие необходимых заголовков
-  if (req.method === 'POST') {
-    const requiredHeaders = ['content-type', 'user-agent'];
-    const missingHeaders = requiredHeaders.filter(header => !req.headers[header]);
-    
-    if (missingHeaders.length > 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Отсутствуют обязательные заголовки: ${missingHeaders.join(', ')}`
-      });
-    }
-  }
-
   next();
 });
 
@@ -141,20 +100,6 @@ console.log('[Server] Configuration:', {
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API работает' });
 });
-
-// Маршрут для удаления пользователя с проверкой авторизации
-app.use('/api/delete-all-user-data', (req, res, next) => {
-  console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
-  const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'Требуется авторизация'
-    });
-  }
-  console.log('[App] Авторизация прошла успешно для /api/delete-all-user-data');
-  next();
-}, deleteAllUserDataRoutes);
 
 // Остальные маршруты
 app.use('/api/users', userRoutes);
