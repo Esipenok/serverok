@@ -26,6 +26,7 @@ const complaintRoutes = require('./complain/routes/complaintRoutes');
 const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
+const deleteAllUserDataRoutes = require('./users/delete_all_user/delete_all_user.routes');
 
 const app = express();
 
@@ -52,6 +53,20 @@ app.use(standardLimiter);
 
 // Защита от инъекций для всех маршрутов
 app.use(protectFromInjection);
+
+// Маршрут для удаления пользователя (размещаем в самом начале)
+app.use('/api/delete-all-user-data', (req, res, next) => {
+  console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Требуется авторизация'
+    });
+  }
+  console.log('[App] Авторизация прошла успешно для /api/delete-all-user-data');
+  next();
+}, deleteAllUserDataRoutes);
 
 // Middleware для логирования запросов
 app.use((req, res, next) => {
@@ -96,6 +111,7 @@ app.use('/api/auth', authRoutes);
 
 // Проверка токена для маршрутов /api/users/
 app.use('/api/users', (req, res, next) => {
+  console.log('[App] Запрос к /api/users:', req.method, req.url);
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -103,6 +119,7 @@ app.use('/api/users', (req, res, next) => {
       message: 'Требуется авторизация'
     });
   }
+  console.log('[App] Авторизация прошла успешно для /api/users');
   next();
 });
 

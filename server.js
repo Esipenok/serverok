@@ -29,6 +29,21 @@ const FastMatch = require('./fast_match/models/fast_match.model');
 const { errorHandler } = require('./auth/middleware/error.middleware');
 const { validateRegistration, validateLocation } = require('./auth/middleware/validation.middleware');
 
+// Добавляем маршрут удаления пользователя прямо здесь
+const deleteAllUserDataRoutes = require('./users/delete_all_user/delete_all_user.routes');
+app.use('/api/delete-all-user-data', (req, res, next) => {
+  console.log('[Server] Запрос к /api/delete-all-user-data:', req.method, req.url);
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Требуется авторизация'
+    });
+  }
+  console.log('[Server] Авторизация прошла успешно для /api/delete-all-user-data');
+  next();
+}, deleteAllUserDataRoutes);
+
 // Подключение к базе данных
 connectDB();
 

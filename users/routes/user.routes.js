@@ -8,16 +8,66 @@ const photosRoutes = require('../photos/photos.routes');
 const { upload } = require('../photos/photos.middleware');
 const fetch = require('node-fetch');
 const blockUnblockRoutes = require('../block_unblock_users');
-const deleteAllUserRoutes = require('../delete_all_user/delete_all_user.routes');
-
-// Используем маршруты для фотографий
-router.use('/', photosRoutes);
 
 // Маршруты блокировки/разблокировки
 router.use('/block', blockUnblockRoutes);
 
-// Маршруты удаления всех данных пользователя
-router.use('/delete', deleteAllUserRoutes);
+// Используем маршруты для фотографий
+router.use('/', photosRoutes);
+
+// Эндпоинт для сохранения отсканированного пользователя в поле qr
+router.post('/save-qr-scan', async (req, res) => {
+    try {
+        const { userId, scannedUserId } = req.body;
+
+        if (!userId || !scannedUserId) {
+            return res.status(400).json({
+                success: false,
+                message: 'userId и scannedUserId обязательны'
+            });
+        }
+
+        // Находим пользователя
+        const user = await User.findOne({ userId });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Пользователь не найден'
+            });
+        }
+
+        // Проверяем, что отсканированный пользователь существует
+        const scannedUser = await User.findOne({ userId: scannedUserId });
+        if (!scannedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'Отсканированный пользователь не найден'
+            });
+        }
+
+        // Добавляем отсканированного пользователя в поле qr, если его там еще нет
+        if (!user.qr.includes(scannedUserId)) {
+            user.qr.push(scannedUserId);
+            await user.save();
+        }
+
+        res.json({
+            success: true,
+            message: 'Пользователь успешно добавлен в QR список',
+            data: {
+                userId: user.userId,
+                qrCount: user.qr.length
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка при сохранении отсканированного пользователя:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Ошибка сервера',
+            error: error.message
+        });
+    }
+});
 
 // Обновление профиля пользователя
 router.put('/:userId', async (req, res) => {
