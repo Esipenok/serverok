@@ -41,6 +41,6 @@ router.post('/batch/transferable', dummyAuth, qrController.generateTransferableB
 router.post('/unlink/:qrId', dummyAuth, qrController.unlinkTransferableQr);
 
 // Удалить отсканированного пользователя из QR списка
-router.delete('/remove-scanned-user', dummyAuth, qrController.removeScannedUser);
+router.delete('/remove-scanned-user/:userId/:scannedUserId', dummyAuth, qrController.removeScannedUser);
 
 module.exports = router; 

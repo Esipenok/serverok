@@ -505,7 +505,7 @@ exports.unlinkTransferableQr = async (req, res) => {
  */
 exports.removeScannedUser = async (req, res) => {
   try {
-    const { userId, scannedUserId } = req.body;
+    const { userId, scannedUserId } = req.params;
     
     if (!userId || !scannedUserId) {
       return res.status(400).json({ 
