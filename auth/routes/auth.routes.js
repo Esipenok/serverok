@@ -8,7 +8,7 @@ const User = require('../models/User');
 
 // Публичные маршруты с улучшенными лимитерами
 router.post('/register', registrationLimiter, validateRegistration, register);
-router.post('/check-user', authLimiter, checkUser);
+router.post('/check-users', authLimiter, checkUser);
 router.post('/login', bruteForceProtection, authLimiter, login);
 router.post('/refresh-token', authLimiter, refreshToken);
 
