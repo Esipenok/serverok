@@ -100,6 +100,10 @@ rm -rf temp_save preserve_dirs.txt
 echo "Установка зависимостей..."
 npm install --production
 
+# Пересобираем Docker образ с новым кодом
+echo "Пересборка Docker образа..."
+docker-compose build app
+
 # Запускаем контейнеры
 echo "Запуск контейнеров Docker..."
 docker-compose up -d

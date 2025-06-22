@@ -33,6 +33,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      # Монтируем только данные, которые должны сохраняться
       - ./uploads:/app/uploads
       - ./logs:/app/logs
       - ./ssl:/app/ssl
@@ -40,7 +41,6 @@ services:
       - mongodb
     networks:
       - app-network
-    command: node server.js
 
 volumes:
   mongodb_data:

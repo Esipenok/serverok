@@ -70,3 +70,7 @@
 {"level":"info","message":"Market counter initialized","timestamp":"2025-06-22T10:15:20.962Z"}
 {"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-22T10:15:20.968Z"}
 {"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-22T10:15:20.969Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-22T10:25:23.244Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-22T10:25:23.249Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-22T10:25:23.250Z"}
+{"level":"error","message":"Error connecting to MongoDB: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","timestamp":"2025-06-22T10:25:53.249Z"}
