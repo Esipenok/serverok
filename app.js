@@ -26,6 +26,7 @@ const complaintRoutes = require('./complain/routes/complaintRoutes');
 const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
+const deleteAllDataRoutes = require('./delete_all_data/delete_all_data.routes');
 
 const app = express();
 
@@ -117,6 +118,18 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/filter-one-night', oneNightRoutes);
 app.use('/api/one-night', oneNightInviteRoutes);
 app.use('/api/one-night-status', oneNightStatusRoutes);
+app.use('/api/delete-all-user-data', (req, res, next) => {
+  console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Требуется авторизация'
+    });
+  }
+  console.log('[App] Авторизация прошла успешно для /api/delete-all-user-data');
+  next();
+}, deleteAllDataRoutes);
 
 // Error handling
 app.use(errorHandler);
