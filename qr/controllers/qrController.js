@@ -1,7 +1,7 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
-const { QRCodeStyling } = require('qr-code-styling-node');
+const { QRCode: CheprasovQRCode } = require('@cheprasov/qrcode');
 
 /**
  * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
@@ -512,7 +512,7 @@ exports.generateEmptyQr = async (req, res) => {
 };
 
 /**
- * Генерирует изображение QR-кода (современный стиль, без цветных углов и аватарки)
+ * Генерирует изображение QR-кода (современный стиль, точки, без цветных углов и аватарки)
  */
 exports.generateQrImage = async (req, res) => {
   try {
@@ -527,30 +527,19 @@ exports.generateQrImage = async (req, res) => {
     }
     // Формируем URL для QR-кода
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
-    // Импортируем qr-code-styling-node
-    const qr = new QRCodeStyling({
-      width: 300,
-      height: 300,
-      data: qrUrl,
-      type: 'png',
-      dotsOptions: {
-        color: '#000000',
-        type: 'rounded' // Современный стиль точек
-      },
-      backgroundOptions: {
-        color: '#ffffff',
-      },
-      cornersSquareOptions: {
-        color: '#000000',
-        type: 'dot' // Черные углы, современный стиль
-      },
-      cornersDotOptions: {
-        color: '#000000',
-        type: 'dot'
-      },
-      margin: 1
+    // Генерируем QR-код с точками
+    const qr = new CheprasovQRCode({
+      text: qrUrl,
+      size: 300,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      quietZone: 4,
+      // Стилизация точек (dot)
+      dotsType: 'dots', // стиль точек
+      cornersSquareType: 'square', // обычные черные углы
+      cornersDotType: 'square',
     });
-    const buffer = await qr.getRawData('png');
+    const buffer = await qr.toBuffer();
     res.writeHead(200, {
       'Content-Type': 'image/png',
       'Content-Length': buffer.length
