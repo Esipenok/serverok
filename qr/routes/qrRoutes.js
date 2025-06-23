@@ -29,7 +29,7 @@ router.post('/transferable', dummyAuth, qrController.createTransferableQr);
 router.post('/claim/:qrId', dummyAuth, qrController.claimTransferableQr);
 
 // Сканировать QR-код
-router.get('/scan/:type/:qrId', dummyAuth, qrController.scanQr);
+router.get('/scan/:qrId/:userId', dummyAuth, qrController.scanQr);
 
 // Удалить QR-код
 router.delete('/:qrId', dummyAuth, qrController.deleteQrCode);

@@ -246,6 +246,11 @@ exports.claimTransferableQr = async (req, res) => {
     
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
+    // Если у QR кода был предыдущий владелец, добавляем взаимное исключение
+    if (previousOwnerId && previousOwnerId !== userId) {
+      await addMutualExclusion(userId, previousOwnerId);
+    }
+    
     return res.status(200).json({
       success: true,
       message: 'QR код успешно присвоен',
@@ -271,10 +276,10 @@ exports.claimTransferableQr = async (req, res) => {
  */
 exports.scanQr = async (req, res) => {
   try {
-    const { qrId, type } = req.params;
+    const { qrId, userId } = req.params;
     
-    if (!qrId) {
-      return res.status(400).json({ success: false, message: 'QR ID обязателен' });
+    if (!qrId || !userId) {
+      return res.status(400).json({ success: false, message: 'QR ID и User ID обязательны' });
     }
 
     // Находим QR-код
@@ -296,7 +301,7 @@ exports.scanQr = async (req, res) => {
     
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     
-    // Если у QR кода есть владельец, получаем его данные
+    // Если у QR кода есть владелец, получаем его данные и добавляем взаимное исключение
     let userData = null;
     if (qrCode.user_id) {
       try {
@@ -308,6 +313,9 @@ exports.scanQr = async (req, res) => {
             name: user.name || 'Пользователь',
             photos: user.photos || []
           };
+          
+          // Добавляем взаимное исключение пользователей в excludedUsers
+          await addMutualExclusion(userId, qrCode.user_id);
         }
       } catch (error) {
         console.error('Ошибка при получении данных пользователя:', error);
@@ -336,6 +344,52 @@ exports.scanQr = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
   }
 };
+
+/**
+ * Добавляет взаимное исключение пользователей в поле excludedUsers
+ * @param {string} user1Id - ID первого пользователя (сканирующего)
+ * @param {string} user2Id - ID второго пользователя (владельца QR)
+ */
+async function addMutualExclusion(user1Id, user2Id) {
+  try {
+    const User = require('../../auth/models/User');
+    
+    // Проверяем, что пользователи не сканируют сами себя
+    if (user1Id === user2Id) {
+      console.log('Пользователь сканирует свой собственный QR код, исключение не требуется');
+      return;
+    }
+    
+    // Получаем обоих пользователей
+    const [user1, user2] = await Promise.all([
+      User.findOne({ userId: user1Id }),
+      User.findOne({ userId: user2Id })
+    ]);
+    
+    if (!user1 || !user2) {
+      console.error('Один из пользователей не найден для взаимного исключения:', { user1Id, user2Id });
+      return;
+    }
+    
+    // Добавляем user2 в excludedUsers user1, если его там еще нет
+    if (!user1.excludedUsers.includes(user2Id)) {
+      user1.excludedUsers.push(user2Id);
+      await user1.save();
+      console.log(`Пользователь ${user2Id} добавлен в excludedUsers пользователя ${user1Id}`);
+    }
+    
+    // Добавляем user1 в excludedUsers user2, если его там еще нет
+    if (!user2.excludedUsers.includes(user1Id)) {
+      user2.excludedUsers.push(user1Id);
+      await user2.save();
+      console.log(`Пользователь ${user1Id} добавлен в excludedUsers пользователя ${user2Id}`);
+    }
+    
+    console.log(`Взаимное исключение успешно добавлено между пользователями ${user1Id} и ${user2Id}`);
+  } catch (error) {
+    console.error('Ошибка при добавлении взаимного исключения:', error);
+  }
+}
 
 /**
  * Удалить QR-код
