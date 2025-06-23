@@ -118,11 +118,11 @@ docker ps
 
 # Проверяем работоспособность API
 echo "Проверка API..."
-# Используем специальный endpoint /health без HTTPS редиректа
-HEALTH_CHECK=$(curl -s http://localhost:3000/health 2>/dev/null || echo "FAIL")
+# Используем -L для следования по редиректам (HTTP -> HTTPS)
+HEALTH_CHECK=$(curl -s -L http://localhost:3000/api/health || echo "FAIL")
 echo "Ответ от API: $HEALTH_CHECK"
 
-if [[ "$HEALTH_CHECK" == *"success"* ]] || [[ "$HEALTH_CHECK" == *"API работает"* ]]; then
+if [[ "$HEALTH_CHECK" == *"success"* ]]; then
     echo "✅ API работает корректно"
 else
     echo "⚠️ API не отвечает или отвечает с ошибкой"
