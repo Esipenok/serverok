@@ -1,6 +1,7 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
+const { QRCodeStyling } = require('qr-code-styling-node');
 
 /**
  * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
@@ -511,48 +512,50 @@ exports.generateEmptyQr = async (req, res) => {
 };
 
 /**
- * Генерирует изображение QR-кода
+ * Генерирует изображение QR-кода (современный стиль, без цветных углов и аватарки)
  */
 exports.generateQrImage = async (req, res) => {
   try {
     const { qrId } = req.params;
-    
     if (!qrId) {
       return res.status(400).json({ success: false, message: 'QR ID обязателен' });
     }
-
     // Находим QR-код
     const qrCode = await QrCode.findOne({ qr_id: qrId });
-    
     if (!qrCode) {
       return res.status(404).json({ success: false, message: 'QR код не найден' });
     }
-
     // Формируем URL для QR-кода
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
-
-    console.log(`Генерация QR изображения для: ${qrUrl}`);
-
-    // Генерируем QR-код как PNG buffer
-    const qrBuffer = await QRCode.toBuffer(qrUrl, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
+    // Импортируем qr-code-styling-node
+    const qr = new QRCodeStyling({
       width: 300,
-      color: {
-        dark: '#000000',
-        light: '#ffffff'
+      height: 300,
+      data: qrUrl,
+      type: 'png',
+      dotsOptions: {
+        color: '#000000',
+        type: 'rounded' // Современный стиль точек
       },
-      type: 'image/png'
+      backgroundOptions: {
+        color: '#ffffff',
+      },
+      cornersSquareOptions: {
+        color: '#000000',
+        type: 'dot' // Черные углы, современный стиль
+      },
+      cornersDotOptions: {
+        color: '#000000',
+        type: 'dot'
+      },
+      margin: 1
     });
-
-    // Отправляем изображение
+    const buffer = await qr.getRawData('png');
     res.writeHead(200, {
       'Content-Type': 'image/png',
-      'Content-Length': qrBuffer.length,
-      'Cache-Control': 'public, max-age=3600' // Кэшируем на 1 час
+      'Content-Length': buffer.length
     });
-    res.end(qrBuffer);
+    res.end(buffer);
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
