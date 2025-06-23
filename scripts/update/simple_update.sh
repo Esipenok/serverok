@@ -118,7 +118,8 @@ docker ps
 
 # Проверяем работоспособность API
 echo "Проверка API..."
-HEALTH_CHECK=$(curl -s http://localhost:3000/api/health || echo "FAIL")
+# Используем -L для следования по редиректам (HTTP -> HTTPS)
+HEALTH_CHECK=$(curl -s -L http://localhost:3000/api/health || echo "FAIL")
 echo "Ответ от API: $HEALTH_CHECK"
 
 if [[ "$HEALTH_CHECK" == *"success"* ]]; then
