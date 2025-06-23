@@ -532,23 +532,27 @@ exports.generateQrImage = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
 
-    // Генерируем QR-код
-    const qrImage = await QRCode.toDataURL(qrUrl, {
+    console.log(`Генерация QR изображения для: ${qrUrl}`);
+
+    // Генерируем QR-код как PNG buffer
+    const qrBuffer = await QRCode.toBuffer(qrUrl, {
       errorCorrectionLevel: 'H',
       margin: 1,
       width: 300,
       color: {
         dark: '#000000',
         light: '#ffffff'
-      }
+      },
+      type: 'image/png'
     });
 
     // Отправляем изображение
     res.writeHead(200, {
       'Content-Type': 'image/png',
-      'Content-Length': qrImage.length
+      'Content-Length': qrBuffer.length,
+      'Cache-Control': 'public, max-age=3600' // Кэшируем на 1 час
     });
-    res.end(Buffer.from(qrImage.split(',')[1], 'base64'));
+    res.end(qrBuffer);
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
