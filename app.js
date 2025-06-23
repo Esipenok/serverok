@@ -102,6 +102,11 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API работает' });
 });
 
+// Специальный health check для скриптов развертывания (без HTTPS редиректа)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'success', message: 'API работает' });
+});
+
 // Остальные маршруты
 app.use('/api/users', userRoutes);
 app.use('/api/photos', photosRoutes);

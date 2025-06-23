@@ -1,6 +1,7 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
+const { generateHeartQrCode } = require('../utils/heartQrGenerator');
 
 /**
  * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
@@ -532,23 +533,18 @@ exports.generateQrImage = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
 
-    // Генерируем QR-код
-    const qrImage = await QRCode.toDataURL(qrUrl, {
-      errorCorrectionLevel: 'H',
-      margin: 1,
-      width: 300,
-      color: {
-        dark: '#000000',
-        light: '#ffffff'
-      }
+    // Генерируем QR-код с сердечками
+    const qrImageBuffer = await generateHeartQrCode(qrUrl, {
+      size: 300,
+      heartStyle: 'center' // Можно изменить на 'corners' или 'gradient'
     });
 
     // Отправляем изображение
     res.writeHead(200, {
       'Content-Type': 'image/png',
-      'Content-Length': qrImage.length
+      'Content-Length': qrImageBuffer.length
     });
-    res.end(Buffer.from(qrImage.split(',')[1], 'base64'));
+    res.end(qrImageBuffer);
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
