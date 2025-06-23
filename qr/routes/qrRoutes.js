@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const qrController = require('../controllers/qrController');
+const heartQrRoutes = require('../image_qr/heartQrRoutes');
 
 // Временный middleware для тестирования - ничего не проверяет
 const dummyAuth = (req, res, next) => {
@@ -45,5 +46,10 @@ router.post('/unlink/:qrId', dummyAuth, qrController.unlinkTransferableQr);
 
 // Удалить отсканированного пользователя из QR списка
 router.delete('/remove-scanned-user/:userId/:scannedUserId', dummyAuth, qrController.removeScannedUser);
+
+/**
+ * Маршруты для QR-кодов с сердечками
+ */
+router.use('/heart', heartQrRoutes);
 
 module.exports = router; 
