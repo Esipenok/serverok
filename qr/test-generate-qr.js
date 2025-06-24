@@ -10,8 +10,12 @@ async function generateSimpleQR(text, filename) {
       errorCorrectionLevel: 'M',
       type: 'image/png',
       quality: 0.9,
-      margin: 1,
-      width: 300
+      margin: 4,  // Увеличиваем отступы
+      width: 500, // Увеличиваем размер QR-кода
+      color: {
+        dark: '#0066CC',  // Синий цвет для темных элементов
+        light: '#FFFFFF'  // Белый цвет для светлых элементов
+      }
     });
     
     console.log(`Буфер сгенерирован, размер: ${buffer.length} байт`);
