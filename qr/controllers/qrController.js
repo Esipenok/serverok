@@ -570,7 +570,7 @@ exports.generateQrImage = async (req, res) => {
       },
       imageOptions: {
         margin: 10,
-        imageSize: 0.5, // 50% от QR
+        imageSize: 0.3, // 50% от QR
         crossOrigin: 'anonymous',
         hideBackgroundDots: true,
         saveAsBlob: true
