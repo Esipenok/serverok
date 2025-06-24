@@ -569,7 +569,7 @@ exports.generateQrImage = async (req, res) => {
         color: '#fff',
       },
       imageOptions: {
-        margin: 20,
+        margin: 10,
         imageSize: 0.5, // 50% от QR
         crossOrigin: 'anonymous',
         hideBackgroundDots: true,
