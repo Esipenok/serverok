@@ -7,8 +7,8 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем Python и dev-зависимости для canvas
-RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev
+# Устанавливаем Python, dev-зависимости для canvas и libc6-compat
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev libc6-compat
 
 # Устанавливаем зависимости
 RUN npm install
