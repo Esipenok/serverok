@@ -1,5 +1,5 @@
-# Используем официальный образ Node.js
-FROM node:18-alpine
+# Используем официальный Debian-based образ Node.js
+FROM node:18
 
 # Создаем директорию приложения
 WORKDIR /app
@@ -7,8 +7,8 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем Python, dev-зависимости для canvas и libc6-compat
-RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev libc6-compat
+# Устанавливаем Python и dev-зависимости для canvas
+RUN apt-get update && apt-get install -y python3 make g++ libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
 # Устанавливаем зависимости
 RUN npm install
