@@ -1,7 +1,6 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
-const { QRCode: CheprasovQRCode } = require('@cheprasov/qrcode');
 
 /**
  * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
@@ -512,39 +511,57 @@ exports.generateEmptyQr = async (req, res) => {
 };
 
 /**
- * Генерирует изображение QR-кода (современный стиль, точки, без цветных углов и аватарки)
+ * Генерирует изображение QR-кода (простая и надежная версия)
  */
 exports.generateQrImage = async (req, res) => {
   try {
     const { qrId } = req.params;
+    
+    console.log(`Генерация QR изображения для ID: ${qrId}`);
+    
     if (!qrId) {
       return res.status(400).json({ success: false, message: 'QR ID обязателен' });
     }
+    
     // Находим QR-код
     const qrCode = await QrCode.findOne({ qr_id: qrId });
     if (!qrCode) {
+      console.log(`QR код не найден: ${qrId}`);
       return res.status(404).json({ success: false, message: 'QR код не найден' });
     }
+    
     // Формируем URL для QR-кода
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
-    // Генерируем QR-код с точками
-    const qr = new CheprasovQRCode({
-      text: qrUrl,
-      size: 300,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      quietZone: 4,
-      // Стилизация точек (dot)
-      dotsType: 'dots', // стиль точек
-      cornersSquareType: 'square', // обычные черные углы
-      cornersDotType: 'square',
+    console.log(`Генерируем QR для URL: ${qrUrl}`);
+    
+    // Генерируем QR-код как буфер
+    const buffer = await QRCode.toBuffer(qrUrl, {
+      errorCorrectionLevel: 'M',
+      type: 'image/png',
+      quality: 0.9,
+      margin: 1,
+      width: 300
     });
-    const buffer = await qr.toBuffer();
+    
+    console.log(`Буфер сгенерирован, размер: ${buffer.length} байт`);
+    
+    // Проверяем, что буфер не пустой
+    if (!buffer || buffer.length === 0) {
+      console.error('Получен пустой буфер QR кода');
+      return res.status(500).json({ success: false, message: 'Ошибка генерации QR кода' });
+    }
+    
+    // Отправляем изображение
     res.writeHead(200, {
       'Content-Type': 'image/png',
-      'Content-Length': buffer.length
+      'Content-Length': buffer.length,
+      'Cache-Control': 'public, max-age=3600' // Кэшируем на 1 час
     });
+    
     res.end(buffer);
+    
+    console.log('QR изображение успешно отправлено');
+    
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
