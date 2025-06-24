@@ -1,6 +1,10 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
+const { QRCodeStyling } = require('qr-code-styling/lib/qr-code-styling.common.js');
+const nodeCanvas = require('canvas');
+const { JSDOM } = require('jsdom');
+const fs = require('fs');
 
 /**
  * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
@@ -516,56 +520,92 @@ exports.generateEmptyQr = async (req, res) => {
 exports.generateQrImage = async (req, res) => {
   try {
     const { qrId } = req.params;
-    
     console.log(`Генерация QR изображения для ID: ${qrId}`);
-    
     if (!qrId) {
       return res.status(400).json({ success: false, message: 'QR ID обязателен' });
     }
-    
     // Находим QR-код
     const qrCode = await QrCode.findOne({ qr_id: qrId });
     if (!qrCode) {
       console.log(`QR код не найден: ${qrId}`);
       return res.status(404).json({ success: false, message: 'QR код не найден' });
     }
-    
     // Формируем URL для QR-кода
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
     console.log(`Генерируем QR для URL: ${qrUrl}`);
-    
-    // Генерируем QR-код как буфер
-    const buffer = await QRCode.toBuffer(qrUrl, {
-      errorCorrectionLevel: 'M',
-      type: 'image/png',
-      quality: 0.9,
-      margin: 4,  // Увеличиваем отступы
-      width: 500, // Увеличиваем размер QR-кода
-      color: {
-        dark: '#0066CC',  // Синий цвет для темных элементов
-        light: '#FFFFFF'  // Белый цвет для светлых элементов
-      }
-    });
-    
-    console.log(`Буфер сгенерирован, размер: ${buffer.length} байт`);
-    
-    // Проверяем, что буфер не пустой
+    // Путь к логотипу (можно сделать динамическим)
+    const logoPath = 'qr/DeWatermark.ai_1730802709042__1_-removebg 1.png';
+    // Проверяем, существует ли логотип
+    let logoBuffer = null;
+    try {
+      logoBuffer = fs.readFileSync(logoPath);
+    } catch (e) {
+      console.warn('Логотип не найден, QR будет без логотипа');
+    }
+    // Настройки QR-кода
+    const options = {
+      width: 500,
+      height: 500,
+      data: qrUrl,
+      image: logoBuffer,
+      margin: 20,
+      qrOptions: {
+        errorCorrectionLevel: 'H',
+        typeNumber: 0,
+        mode: 'Byte',
+      },
+      dotsOptions: {
+        gradient: {
+          type: 'linear',
+          rotation: Math.PI * 0.75,
+          colorStops: [
+            { offset: 0, color: '#665BFF' },
+            { offset: 1, color: '#FF644F' }
+          ]
+        },
+        type: 'rounded',
+      },
+      backgroundOptions: {
+        color: '#fff',
+      },
+      imageOptions: {
+        margin: 20,
+        imageSize: 0.5, // 50% от QR
+        crossOrigin: 'anonymous',
+        hideBackgroundDots: true,
+        saveAsBlob: true
+      },
+      cornersSquareOptions: {
+        type: 'extra-rounded',
+        gradient: {
+          type: 'linear',
+          rotation: Math.PI * 0.75,
+          colorStops: [
+            { offset: 0, color: '#665BFF' },
+            { offset: 1, color: '#FF644F' }
+          ]
+        }
+      },
+      cornersDotOptions: {
+        type: 'dot',
+        color: '#FF644F'
+      },
+      nodeCanvas,
+      jsdom: JSDOM,
+    };
+    const qrCodeStyling = new QRCodeStyling(options);
+    const buffer = await qrCodeStyling.getRawData('png');
     if (!buffer || buffer.length === 0) {
       console.error('Получен пустой буфер QR кода');
       return res.status(500).json({ success: false, message: 'Ошибка генерации QR кода' });
     }
-    
-    // Отправляем изображение
     res.writeHead(200, {
       'Content-Type': 'image/png',
       'Content-Length': buffer.length,
-      'Cache-Control': 'public, max-age=3600' // Кэшируем на 1 час
+      'Cache-Control': 'public, max-age=3600'
     });
-    
     res.end(buffer);
-    
     console.log('QR изображение успешно отправлено');
-    
   } catch (error) {
     console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
