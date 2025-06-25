@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
 const { getFullPhotoUrl, formatUserWithPhotos } = require('../../users/photos/photo.utils');
+const notificationService = require('../../notifications/notification.service');
 
 // Like a user
 exports.likeUser = async (req, res) => {
@@ -99,6 +100,27 @@ exports.likeUser = async (req, res) => {
           { $addToSet: { matches: userId } }
         )
       ]);
+      
+      // Отправляем уведомление второму пользователю о новом мэтче
+      // Получаем данные текущего пользователя для уведомления
+      const currentUserInfo = await User.findOne({ userId: userId })
+        .select('name photos');
+      
+      const currentUserPhotoUrl = currentUserInfo.photos && currentUserInfo.photos.length > 0 
+        ? getFullPhotoUrl(currentUserInfo.photos[0]) 
+        : null;
+      
+      const notificationData = {
+        userId: userId,
+        name: currentUserInfo.name,
+        photoUrl: currentUserPhotoUrl
+      };
+      
+      // Отправляем уведомление асинхронно (не блокируем ответ)
+      notificationService.sendMatchNotification(otherUserId, notificationData)
+        .catch(error => {
+          console.error('Ошибка отправки уведомления о мэтче:', error);
+        });
       
       return res.status(200).json({
         message: 'Matched!',
