@@ -175,28 +175,15 @@ const checkUser = async (req, res, next) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    // Возвращаем информацию о пользователе
+    // Возвращаем только необходимую информацию о пользователе
     const response = {
       status: 'success',
       exists: true,
       data: {
         userId: user.userId,
-        email: user.email,
         isProfileCompleted: user.isProfileCompleted,
         token,
-        refreshToken,
-        market_cards: user.market_cards || [],
-        market_ageMin: user.market_ageMin || 18,
-        market_ageMax: user.market_ageMax || 100,
-        market_lookingFor: user.market_lookingFor || 'all',
-        market_searchDistance: user.market_searchDistance || 100,
-        market_location: user.market_location || {},
-        market_location_country: user.market_location_country || '',
-        blocked_users: user.blocked_users || [],
-        blocked_market_users: user.blocked_market_users || [],
-        market_card_exclude: user.market_card_exclude || [],
-        one_night: user.one_night || false,
-        firebaseUid: user.firebaseUid
+        refreshToken
       }
     };
     console.log('[checkUser] Ответ клиенту:', JSON.stringify(response));
