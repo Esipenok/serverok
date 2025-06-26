@@ -27,6 +27,7 @@ const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
 const deleteAllDataRoutes = require('./delete_all_data/delete_all_data.routes');
+const likeCounterRoutes = require('./matches/like_notification/like-counter.routes');
 
 const app = express();
 
@@ -106,6 +107,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/photos', photosRoutes);
 app.use('/api/matches', matchRoutes);
+app.use('/api/like-counter', likeCounterRoutes);
 app.use('/api/fast-match', fastMatchRoutes);
 app.use('/api/fast-match-main', fastMatchMainRoutes);
 app.use('/api/filter-market', filterMarketRoutes);

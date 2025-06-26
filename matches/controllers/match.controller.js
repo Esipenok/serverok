@@ -5,6 +5,7 @@ const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
 const { getFullPhotoUrl, formatUserWithPhotos } = require('../../users/photos/photo.utils');
 const notificationService = require('../../notifications/notification.service');
+const { likeCounterService } = require('../like_notification');
 
 // Like a user
 exports.likeUser = async (req, res) => {
@@ -141,6 +142,13 @@ exports.likeUser = async (req, res) => {
       // Not a match yet, just save the like
       matchRecord.lastInteraction = new Date();
       await matchRecord.save();
+      
+      // Отправляем уведомление о лайке через систему счетчиков
+      // Делаем это асинхронно, чтобы не блокировать ответ
+      likeCounterService.incrementLikeCounter(targetUserId)
+        .catch(error => {
+          console.error('Ошибка отправки уведомления о лайке:', error);
+        });
       
       return res.status(200).json({
         message: 'Liked',
