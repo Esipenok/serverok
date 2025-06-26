@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const likeCounterController = require('./like-counter.controller');
-const authMiddleware = require('../../auth/middleware/auth.middleware');
+const { authenticateToken } = require('../../auth/middleware/auth.middleware');
 
 // Применяем middleware аутентификации ко всем маршрутам
-router.use(authMiddleware);
+router.use(authenticateToken);
 
 // GET /api/like-counter/:userId - Получить количество лайков для пользователя
 router.get('/:userId?', likeCounterController.getLikeCount);
