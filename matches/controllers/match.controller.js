@@ -5,7 +5,6 @@ const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
 const { getFullPhotoUrl, formatUserWithPhotos } = require('../../users/photos/photo.utils');
 const notificationService = require('../../notifications/notification.service');
-const { likeCounterService } = require('../like_notification');
 
 // Like a user
 exports.likeUser = async (req, res) => {
@@ -143,9 +142,9 @@ exports.likeUser = async (req, res) => {
       matchRecord.lastInteraction = new Date();
       await matchRecord.save();
       
-      // Отправляем уведомление о лайке через систему счетчиков
-      // Делаем это асинхронно, чтобы не блокировать ответ
-      likeCounterService.incrementLikeCounter(targetUserId)
+      // Отправляем уведомление о лайке (простое уведомление с likeCount: 1)
+      // Вся логика подсчета происходит в Firebase через Cloud Functions
+      notificationService.sendLikeNotification(targetUserId)
         .catch(error => {
           console.error('Ошибка отправки уведомления о лайке:', error);
         });

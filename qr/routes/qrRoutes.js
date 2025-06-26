@@ -16,8 +16,8 @@ const dummyAuth = (req, res, next) => {
 // Получить все QR-коды пользователя
 router.get('/user/:userId', dummyAuth, qrController.getUserQrCodes);
 
-// Получить изображение QR-кода
-router.get('/image/:qrId', qrController.generateQrImage);
+// Получить данные QR-кода для клиентской генерации
+router.get('/data/:qrId', qrController.getQrData);
 
 // Создать постоянный QR-код для пользователя
 router.post('/permanent', dummyAuth, qrController.createPermanentQr);

@@ -1,28 +1,25 @@
 const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
-const { QRCodeStyling } = require('qr-code-styling/lib/qr-code-styling.common.js');
-const nodeCanvas = require('canvas');
-const { JSDOM } = require('jsdom');
 const fs = require('fs');
 
 /**
- * Получить изображение QR-кода в формате URL, который можно отобразить в приложении
+ * Получить URL для получения данных QR-кода
  */
-exports.getQrImageUrl = (qrId, baseUrl = '') => {
-  // Формируем URL для получения изображения QR-кода
-  return `${baseUrl}/api/qr/image/${qrId}`;
+exports.getQrDataUrl = (qrId, baseUrl = '') => {
+  // Формируем URL для получения данных QR-кода
+  return `${baseUrl}/api/qr/data/${qrId}`;
 };
 
 /**
- * Добавляет поле image_url ко всем QR-кодам в ответе
+ * Добавляет поле qr_data_url ко всем QR-кодам в ответе
  */
-exports.addImageUrlToQrCodes = (qrCodes, req) => {
+exports.addQrDataUrlToQrCodes = (qrCodes, req) => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   
   return qrCodes.map(qr => ({
     ...qr,
-    image_url: exports.getQrImageUrl(qr.qr_id, baseUrl)
+    qr_data_url: exports.getQrDataUrl(qr.qr_id, baseUrl)
   }));
 };
 
@@ -56,7 +53,7 @@ exports.getUserQrCodes = async (req, res) => {
         description: qr.message || '',
         custom_message: qr.message || '',
         qr_url: `yourapp://qr/${qr.is_permanent ? 'permanent' : 'transferable'}/${qr.qr_id}`,
-        image_url: exports.getQrImageUrl(qr.qr_id, baseUrl)
+        qr_data_url: exports.getQrDataUrl(qr.qr_id, baseUrl)
       };
     });
     
@@ -111,7 +108,7 @@ exports.createPermanentQr = async (req, res) => {
             description: existingPermanentQr.message || '',
             custom_message: existingPermanentQr.message || '',
             qr_url: `yourapp://qr/permanent/${existingPermanentQr.qr_id}`,
-            image_url: exports.getQrImageUrl(existingPermanentQr.qr_id, baseUrl)
+            qr_data_url: exports.getQrDataUrl(existingPermanentQr.qr_id, baseUrl)
           }
         }
       });
@@ -142,7 +139,7 @@ exports.createPermanentQr = async (req, res) => {
           description: newQrCode.message || '',
           custom_message: newQrCode.message || '',
           qr_url: `yourapp://qr/permanent/${newQrCode.qr_id}`,
-          image_url: exports.getQrImageUrl(newQrCode.qr_id, baseUrl)
+          qr_data_url: exports.getQrDataUrl(newQrCode.qr_id, baseUrl)
         }
       }
     });
@@ -186,7 +183,7 @@ exports.createTransferableQr = async (req, res) => {
           description: newQrCode.message || '',
           custom_message: newQrCode.message || '',
           qr_url: `yourapp://qr/transferable/${newQrCode.qr_id}`,
-          image_url: exports.getQrImageUrl(newQrCode.qr_id, baseUrl)
+          qr_data_url: exports.getQrDataUrl(newQrCode.qr_id, baseUrl)
         }
       }
     });
@@ -264,7 +261,7 @@ exports.claimTransferableQr = async (req, res) => {
           description: qrCode.message || '',
           custom_message: qrCode.message || '',
           qr_url: `yourapp://qr/transferable/${qrCode.qr_id}`,
-          image_url: exports.getQrImageUrl(qrCode.qr_id, baseUrl)
+          qr_data_url: exports.getQrDataUrl(qrCode.qr_id, baseUrl)
         },
         previousOwnerId
       }
@@ -336,7 +333,7 @@ exports.scanQr = async (req, res) => {
           description: qrCode.message || '',
           custom_message: qrCode.message || '',
           qr_url: `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`,
-          image_url: exports.getQrImageUrl(qrCode.qr_id, baseUrl)
+          qr_data_url: exports.getQrDataUrl(qrCode.qr_id, baseUrl)
         },
         user_data: userData,
         isPermanent: qrCode.is_permanent,
@@ -504,7 +501,7 @@ exports.generateEmptyQr = async (req, res) => {
           description: newQrCode.message || '',
           custom_message: newQrCode.message || '',
           qr_url: `yourapp://qr/transferable/${newQrCode.qr_id}`,
-          image_url: exports.getQrImageUrl(newQrCode.qr_id, baseUrl)
+          qr_data_url: exports.getQrDataUrl(newQrCode.qr_id, baseUrl)
         }
       }
     });
@@ -515,47 +512,57 @@ exports.generateEmptyQr = async (req, res) => {
 };
 
 /**
- * Генерирует изображение QR-кода (простая и надежная версия)
+ * Получить данные QR-кода для клиентской генерации
  */
-exports.generateQrImage = async (req, res) => {
+exports.getQrData = async (req, res) => {
   try {
     const { qrId } = req.params;
-    console.log(`Генерация QR изображения для ID: ${qrId}`);
+    console.log(`Получение данных QR кода для ID: ${qrId}`);
+    
     if (!qrId) {
       return res.status(400).json({ success: false, message: 'QR ID обязателен' });
     }
+
     // Находим QR-код
     const qrCode = await QrCode.findOne({ qr_id: qrId });
+    
     if (!qrCode) {
       console.log(`QR код не найден: ${qrId}`);
       return res.status(404).json({ success: false, message: 'QR код не найден' });
     }
+
     // Формируем URL для QR-кода
     const qrUrl = `yourapp://qr/${qrCode.is_permanent ? 'permanent' : 'transferable'}/${qrCode.qr_id}`;
-    console.log(`Генерируем QR для URL: ${qrUrl}`);
-    // Путь к логотипу (можно сделать динамическим)
-    const logoPath = 'qr/DeWatermark.ai_1730802709042__1_-removebg 1.png';
-    // Проверяем, существует ли логотип
-    let logoBuffer = null;
-    try {
-      logoBuffer = fs.readFileSync(logoPath);
-    } catch (e) {
-      console.warn('Логотип не найден, QR будет без логотипа');
-    }
-    // Настройки QR-кода
-    const options = {
-      width: 500,
-      height: 500,
-      data: qrUrl,
-      image: logoBuffer,
-      margin: 20,
-      qrOptions: {
+    
+    // Возвращаем данные для клиентской генерации
+    const qrData = {
+      qr_id: qrCode.qr_id,
+      qr_url: qrUrl,
+      is_permanent: qrCode.is_permanent,
+      message: qrCode.message || '',
+      user_id: qrCode.user_id,
+      created_at: qrCode.created_at,
+      // Стилизация
+      styling: {
+        width: 500,
+        height: 500,
+        margin: 20,
         errorCorrectionLevel: 'H',
-        typeNumber: 0,
-        mode: 'Byte',
-      },
-      dotsOptions: {
-        gradient: {
+        // Градиент для точек
+        dotsGradient: {
+          type: 'linear',
+          rotation: Math.PI * 0.75, // 135 градусов
+          colorStops: [
+            { offset: 0, color: '#665BFF' },
+            { offset: 1, color: '#FF644F' }
+          ]
+        },
+        dotsType: 'rounded',
+        // Фон
+        backgroundColor: '#FFFFFF',
+        // Углы
+        cornersSquareType: 'extra-rounded',
+        cornersSquareGradient: {
           type: 'linear',
           rotation: Math.PI * 0.75,
           colorStops: [
@@ -563,51 +570,20 @@ exports.generateQrImage = async (req, res) => {
             { offset: 1, color: '#FF644F' }
           ]
         },
-        type: 'rounded',
-      },
-      backgroundOptions: {
-        color: '#fff',
-      },
-      imageOptions: {
-        margin: 10,
-        imageSize: 0.3, // 50% от QR
-        crossOrigin: 'anonymous',
-        hideBackgroundDots: true,
-        saveAsBlob: true
-      },
-      cornersSquareOptions: {
-        type: 'extra-rounded',
-        gradient: {
-          type: 'linear',
-          rotation: Math.PI * 0.75,
-          colorStops: [
-            { offset: 0, color: '#665BFF' },
-            { offset: 1, color: '#FF644F' }
-          ]
-        }
-      },
-      cornersDotOptions: {
-        type: 'dot',
-        color: '#FF644F'
-      },
-      nodeCanvas,
-      jsdom: JSDOM,
+        cornersDotType: 'dot',
+        cornersDotColor: '#FF644F',
+        // Логотип
+        logoSize: 0.3,
+        logoMargin: 10
+      }
     };
-    const qrCodeStyling = new QRCodeStyling(options);
-    const buffer = await qrCodeStyling.getRawData('png');
-    if (!buffer || buffer.length === 0) {
-      console.error('Получен пустой буфер QR кода');
-      return res.status(500).json({ success: false, message: 'Ошибка генерации QR кода' });
-    }
-    res.writeHead(200, {
-      'Content-Type': 'image/png',
-      'Content-Length': buffer.length,
-      'Cache-Control': 'public, max-age=3600'
+
+    return res.status(200).json({
+      success: true,
+      data: qrData
     });
-    res.end(buffer);
-    console.log('QR изображение успешно отправлено');
   } catch (error) {
-    console.error(`Ошибка при генерации QR кода: ${error.message}`, error.stack);
+    console.error(`Ошибка при получении данных QR кода: ${error.message}`, error.stack);
     return res.status(500).json({ success: false, message: 'Ошибка сервера', error: error.message });
   }
 };
