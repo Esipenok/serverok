@@ -96,7 +96,7 @@ done
 # Проверяем API
 echo "Проверка API..."
 for i in {1..6}; do
-    HEALTH_CHECK=$(curl -s -L https://willowe.love/api/health-test-broken || echo "FAIL")
+    HEALTH_CHECK=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
     if [[ "$HEALTH_CHECK" == *"success"* ]]; then
         echo "✅ API работает корректно"
         break
@@ -130,22 +130,30 @@ if [[ "$HEALTH_CHECK" != *"success"* ]]; then
     exit 1
 fi
 
-# Очищаем старые версии (оставляем последние 10)
+# Очищаем старые версии (оставляем только последнюю рабочую)
 echo "Очистка старых версий..."
 cd /app/releases
 RELEASE_COUNT=$(ls -1 | wc -l)
-if [ $RELEASE_COUNT -gt 10 ]; then
-    echo "Найдено $RELEASE_COUNT версий, удаляем старые..."
-    ls -1t | tail -n +11 | xargs -r rm -rf
+if [ $RELEASE_COUNT -gt 1 ]; then
+    echo "Найдено $RELEASE_COUNT версий, оставляем только последнюю..."
+    # Удаляем все версии кроме текущей активной
+    ls -1 | grep -v "$RELEASE_NAME" | xargs -r rm -rf
+    echo "✅ Удалено $(($RELEASE_COUNT - 1)) старых версий"
+else
+    echo "✅ Только одна версия, очистка не требуется"
 fi
 
-# Очищаем старые бэкапы (оставляем последние 5)
+# Очищаем старые бэкапы (оставляем только последний)
 echo "Очистка старых бэкапов..."
 cd /app/backups
 BACKUP_COUNT=$(ls -1 | wc -l)
-if [ $BACKUP_COUNT -gt 5 ]; then
-    echo "Найдено $BACKUP_COUNT бэкапов, удаляем старые..."
-    ls -1t | tail -n +6 | xargs -r rm -rf
+if [ $BACKUP_COUNT -gt 1 ]; then
+    echo "Найдено $BACKUP_COUNT бэкапов, оставляем только последний..."
+    # Удаляем все бэкапы кроме самого нового
+    ls -1t | tail -n +2 | xargs -r rm -rf
+    echo "✅ Удалено $(($BACKUP_COUNT - 1)) старых бэкапов"
+else
+    echo "✅ Только один бэкап, очистка не требуется"
 fi
 
 # Показываем статус
