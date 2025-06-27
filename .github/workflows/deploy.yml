@@ -73,12 +73,12 @@ jobs:
       - name: Copy files to server
         run: |
           echo "📤 Копирование файлов на сервер..."
-          scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
+          scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/app/
           
       - name: Execute zero-downtime deployment
         run: |
           echo "🚀 Запуск zero-downtime deployment..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.SERVER_PATH }} && bash zero_downtime_deploy.sh"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd /app && bash zero_downtime_deploy.sh"
           
       - name: Verify deployment
         run: |
