@@ -1,130 +1,164 @@
-# Система уведомлений
+# Система уведомлений (Firebase)
 
-## Описание
-Система уведомлений отправляет push-уведомления в Firebase Realtime Database при различных событиях в приложении.
+Упрощенная система для отправки уведомлений в Firebase Realtime Database. Вся логика подсчета лайков происходит в Firebase через Cloud Functions.
+
+## Как это работает
+
+1. **Сервер**: Отправляет простое уведомление с `likeCount: 1`
+2. **Firebase Cloud Function**: Автоматически подсчитывает лайки и обновляет счетчик
+3. **Клиент**: Получает актуальный счетчик из последнего уведомления типа `like_counter`
 
 ## Структура данных в Firebase
 
-Уведомления сохраняются в следующей структуре:
+### Уведомления
 ```
-notifications/
-  {userId}/
-    {notificationId}/
-      {
-        "type": "match|like|message",
-        "title": "Заголовок уведомления",
-        "body": "Текст уведомления",
-        "data": {
-          "userId": "id_пользователя",
-          "name": "имя_пользователя",
-          "photoUrl": "url_аватара"
-        },
-        "timestamp": 1234567890,
-        "read": false
-      }
+/notifications/{userId}
+{
+  "type": "like_counter" | "match" | "message",
+  "title": "Новый лайк!" | "Новый мэтч!" | "Новое сообщение",
+  "body": "Кто-то поставил вам лайк",
+  "data": {
+    "likeCount": 1, // для like_counter
+    "userId": "user123", // для match/message
+    "name": "Имя пользователя",
+    "photoUrl": "https://...",
+    "timestamp": 1234567890
+  },
+  "timestamp": 1234567890,
+  "read": false
+}
 ```
 
-## Типы уведомлений
-
-### 1. Match (Мэтч)
-Отправляется при образовании взаимного мэтча между пользователями.
-
-**Данные:**
-- `type`: "match"
-- `title`: "Новый мэтч!"
-- `body`: "У вас новый мэтч с {name}"
-- `data.userId`: ID сматченного пользователя
-- `data.name`: Имя сматченного пользователя
-- `data.photoUrl`: URL аватара сматченного пользователя
-
-### 2. Like (Лайк)
-Отправляется при получении лайка от другого пользователя.
-
-**Данные:**
-- `type`: "like"
-- `title`: "Новый лайк!"
-- `body`: "{name} поставил вам лайк"
-- `data.userId`: ID пользователя, который поставил лайк
-- `data.name`: Имя пользователя, который поставил лайк
-- `data.photoUrl`: URL аватара пользователя
-
-### 3. Message (Сообщение)
-Отправляется при получении нового сообщения.
-
-**Данные:**
-- `type`: "message"
-- `title`: "Новое сообщение от {name}"
-- `body`: Превью сообщения
-- `data.userId`: ID отправителя
-- `data.name`: Имя отправителя
-- `data.photoUrl`: URL аватара отправителя
-- `data.messagePreview`: Превью сообщения
-
-## Использование
-
-### Отправка уведомления о мэтче
-```javascript
-const notificationService = require('./notifications/notification.service');
-
-const matchedUserData = {
-  userId: 'user123',
-  name: 'Анна',
-  photoUrl: 'https://example.com/photo.jpg'
-};
-
-await notificationService.sendMatchNotification('targetUserId', matchedUserData);
-```
+## API Methods
 
 ### Отправка уведомления о лайке
 ```javascript
-const likerData = {
-  userId: 'user456',
-  name: 'Михаил',
-  photoUrl: 'https://example.com/photo2.jpg'
-};
-
-await notificationService.sendLikeNotification('targetUserId', likerData);
+await notificationService.sendLikeNotification(targetUserId);
 ```
 
-### Отправка уведомления о сообщении
+### Отправка уведомления о мэтче
 ```javascript
-const senderData = {
-  userId: 'user789',
-  name: 'Елена',
-  photoUrl: 'https://example.com/photo3.jpg'
-};
-
-await notificationService.sendMessageNotification('targetUserId', senderData, 'Привет! Как дела?');
+await notificationService.sendMatchNotification(targetUserId, {
+  userId: 'user123',
+  name: 'Имя пользователя',
+  photoUrl: 'https://...'
+});
 ```
 
-## Интеграция с контроллерами
-
-### Мэтчи
-В `willowe/matches/controllers/match.controller.js` добавлена логика отправки уведомлений при образовании мэтча.
-
-### Лайки
-Для отправки уведомлений о лайках нужно добавить вызов в соответствующий контроллер.
-
-### Сообщения
-Для отправки уведомлений о сообщениях нужно добавить вызов в контроллер сообщений.
-
-## Тестирование
-
-Для тестирования системы уведомлений используйте файл `test-notification.js`:
-
-```bash
-node notifications/test-notification.js
+### Отправка общего уведомления
+```javascript
+await notificationService.sendNotification(
+  targetUserId,
+  'custom_type',
+  'Заголовок',
+  'Текст уведомления',
+  { customData: 'value' }
+);
 ```
 
-## Обработка ошибок
+### Получение уведомлений пользователя
+```javascript
+const notifications = await notificationService.getUserNotifications(userId);
+```
 
-Система уведомлений обрабатывает ошибки следующим образом:
-- Если Firebase недоступен, уведомление не отправляется
-- Ошибки логируются в консоль
-- Основной функционал приложения не блокируется при ошибках уведомлений
+### Отметка как прочитанное
+```javascript
+await notificationService.markAsRead(userId, notificationId);
+```
 
-## Безопасность
+### Удаление уведомления
+```javascript
+await notificationService.deleteNotification(userId, notificationId);
+```
 
-- Уведомления отправляются только авторизованным пользователям
-- Данные пользователей передаются только в зашифрованном виде
-- Firebase URL защищен настройками безопасности Firebase 
+## Cloud Function для подсчета лайков
+
+Для автоматического подсчета лайков нужно создать Cloud Function в Firebase:
+
+```javascript
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+exports.aggregateLikeCounter = functions.database
+  .ref('/notifications/{userId}/{notificationId}')
+  .onCreate(async (snapshot, context) => {
+    const { userId, notificationId } = context.params;
+    const newNotification = snapshot.val();
+
+    if (!newNotification || newNotification.type !== 'like_counter') {
+      return null;
+    }
+
+    const notificationsRef = admin.database().ref(`/notifications/${userId}`);
+    const notificationsSnap = await notificationsRef.once('value');
+    const notifications = notificationsSnap.val();
+
+    let lastLikeKey = null;
+    let lastLikeTimestamp = 0;
+
+    // Ищем последнее уведомление типа like_counter
+    for (const [key, notif] of Object.entries(notifications || {})) {
+      if (
+        key !== notificationId &&
+        notif.type === 'like_counter' &&
+        notif.timestamp > lastLikeTimestamp
+      ) {
+        lastLikeTimestamp = notif.timestamp;
+        lastLikeKey = key;
+      }
+    }
+
+    if (lastLikeKey) {
+      const lastLikeNotif = notifications[lastLikeKey];
+      const prevCount = lastLikeNotif.data?.likeCount || 1;
+
+      // Обновляем новый notification
+      await notificationsRef.child(notificationId).update({
+        'data/likeCount': prevCount + 1,
+        title: prevCount + 1 === 1 ? 'Новый лайк!' : 'Новые лайки!',
+        body: prevCount + 1 === 1 ? 'Кто-то поставил вам лайк' : `${prevCount + 1} человек поставили вам лайк`
+      });
+
+      // Удаляем старое уведомление
+      await notificationsRef.child(lastLikeKey).remove();
+    }
+
+    return null;
+  });
+```
+
+## Интеграция в контроллере
+
+В `match.controller.js`:
+
+```javascript
+// При лайке (если нет мэтча)
+notificationService.sendLikeNotification(targetUserId)
+  .catch(error => {
+    console.error('Ошибка отправки уведомления о лайке:', error);
+  });
+
+// При мэтче
+notificationService.sendMatchNotification(otherUserId, {
+  userId: currentUser.userId,
+  name: currentUser.name,
+  photoUrl: currentUserPhotoUrl
+});
+```
+
+## Преимущества новой архитектуры
+
+- ✅ **Простота**: Сервер только отправляет уведомления
+- ✅ **Производительность**: Подсчет происходит в Firebase
+- ✅ **Масштабируемость**: Cloud Functions автоматически масштабируются
+- ✅ **Консистентность**: Всегда актуальный счетчик
+- ✅ **Реальное время**: Мгновенные обновления
+
+## Автоматическая очистка
+
+Уведомления автоматически удаляются через 30 дней после последнего обновления благодаря TTL индексу в MongoDB.
+
+## Логирование
+
+Все операции логируются в консоль для отладки и мониторинга. 

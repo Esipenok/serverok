@@ -6,9 +6,9 @@ const bcrypt = require('bcryptjs');
 
 const register = async (req, res, next) => {
   try {
-    let { email, firebaseUid } = req.body;
+    let { email, firebaseUid, inviterUserId } = req.body;
     
-    console.log('[register] Получены данные:', { email, firebaseUid });
+    console.log('[register] Получены данные:', { email, firebaseUid, inviterUserId });
     
     // Проверяем, что email не undefined и не null
     if (!email) {
@@ -77,6 +77,21 @@ const register = async (req, res, next) => {
 
     // Создаем нового пользователя
     const user = await User.create(userData);
+
+    // Обрабатываем инвайт, если передан inviterUserId
+    if (inviterUserId && inviterUserId !== userId) {
+      try {
+        const inviter = await User.findOne({ userId: inviterUserId });
+        if (inviter) {
+          inviter.invites = (inviter.invites || 0) + 1;
+          await inviter.save();
+          console.log(`[register] Увеличен счетчик инвайтов для пользователя ${inviterUserId}: ${inviter.invites}`);
+        }
+      } catch (inviteError) {
+        console.error('[register] Ошибка при обработке инвайта:', inviteError);
+        // Не прерываем регистрацию из-за ошибки инвайта
+      }
+    }
 
     // Получаем IP-адрес клиента
     const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;

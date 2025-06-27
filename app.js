@@ -20,14 +20,15 @@ const filterMarketRoutes = require('./filter_market/routes');
 const marketCardRoutes = require('./marketprofiles/routes/marketCardRoutes');
 const blockUnblockRoutes = require('./users/block_unblock_users');
 const getDataUsersRoutes = require('./users/get_data_users/get_data_users.routes');
-// const qrRoutes = require('./qr/routes/qrRoutes');
+const qrRoutes = require('./qr/routes/qrRoutes');
 const filterFinderRoutes = require('./filter_finder/routes');
 const complaintRoutes = require('./complain/routes/complaintRoutes');
 const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
 const deleteAllDataRoutes = require('./delete_all_data/delete_all_data.routes');
-const likeCounterRoutes = require('./matches/like_notification/like-counter.routes');
+const inviteRoutes = require('./invites/invite.routes');
+
 
 const app = express();
 
@@ -107,19 +108,20 @@ app.get('/api/health', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/photos', photosRoutes);
 app.use('/api/matches', matchRoutes);
-app.use('/api/like-counter', likeCounterRoutes);
+
 app.use('/api/fast-match', fastMatchRoutes);
 app.use('/api/fast-match-main', fastMatchMainRoutes);
 app.use('/api/filter-market', filterMarketRoutes);
 app.use('/api/market-cards', marketCardRoutes);
 app.use('/api', blockUnblockRoutes);
 app.use('/api/limited-users', getDataUsersRoutes);
-// app.use('/api/qr', qrRoutes);
+app.use('/api/qr', qrRoutes);
 app.use('/api/filter-finder', filterFinderRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/filter-one-night', oneNightRoutes);
 app.use('/api/one-night', oneNightInviteRoutes);
 app.use('/api/one-night-status', oneNightStatusRoutes);
+app.use('/api/invites', inviteRoutes);
 app.use('/api/delete-all-user-data', (req, res, next) => {
   console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
   const authHeader = req.headers['authorization'];

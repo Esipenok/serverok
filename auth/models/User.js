@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
     }
   },
   one_night: { type: Boolean, default: false },
+  // Поле для подсчета количества приглашенных пользователей
+  invites: { type: Number, default: 0 },
   // Массив userId пользователей, которых нужно исключить из поиска
   excludedUsers: {
     type: [String],
