@@ -27,6 +27,36 @@ services:
     networks:
       - app-network
 
+  # Zookeeper для Kafka (Bitnami)
+  zookeeper:
+    image: bitnami/zookeeper:3.8
+    container_name: dating_app_zookeeper
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - app-network
+
+  # Kafka брокер (Bitnami)
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: dating_app_kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    networks:
+      - app-network
+
   # Node.js сервер (оптимизированный для zero-downtime)
   app:
     image: node:18
@@ -43,6 +73,7 @@ services:
       BASE_URL: https://willowe.love
       STATIC_URL: https://willowe.love
       REDIS_URL: redis://redis:6379
+      KAFKA_BROKER: kafka:9092
     ports:
       - "3000:3000"
     volumes:
@@ -56,6 +87,7 @@ services:
     depends_on:
       - mongodb
       - redis
+      - kafka
     networks:
       - app-network
     healthcheck:
