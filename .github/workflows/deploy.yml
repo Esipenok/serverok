@@ -54,7 +54,7 @@ jobs:
           # Копируем только нужные файлы
           cp -r app.js server.js package.json package-lock.json temp_deploy/
           cp -r auth config users matches fast_match marketprofiles qr complain one_night filter_* temp_deploy/ 2>/dev/null || true
-          cp -r invites delete_all_data country utils temp_deploy/ 2>/dev/null || true
+          cp -r invites delete_all_data country utils notifications temp_deploy/ 2>/dev/null || true
           cp -r security scripts docs temp_deploy/ 2>/dev/null || true
           
           # Создаем архив из временной директории
