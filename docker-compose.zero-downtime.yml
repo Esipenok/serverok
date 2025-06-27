@@ -17,6 +17,16 @@ services:
     networks:
       - app-network
 
+  # Redis сервис
+  redis:
+    image: redis:7
+    container_name: dating_app_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   # Node.js сервер (оптимизированный для zero-downtime)
   app:
     image: node:18
@@ -32,6 +42,7 @@ services:
       JWT_EXPIRE: ${JWT_EXPIRE:-7d}
       BASE_URL: https://willowe.love
       STATIC_URL: https://willowe.love
+      REDIS_URL: redis://redis:6379
     ports:
       - "3000:3000"
     volumes:
@@ -44,6 +55,7 @@ services:
       - /app/shared/.env:/app/.env
     depends_on:
       - mongodb
+      - redis
     networks:
       - app-network
     healthcheck:
