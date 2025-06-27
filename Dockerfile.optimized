@@ -1,0 +1,39 @@
+# Многоэтапная сборка для оптимизации размера
+FROM node:18-alpine AS builder
+
+# Устанавливаем зависимости для сборки
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev
+
+WORKDIR /app
+
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm ci --only=production
+
+# Финальный образ
+FROM node:18-alpine
+
+# Устанавливаем только runtime зависимости
+RUN apk add --no-cache cairo pango jpeg giflib librsvg
+
+WORKDIR /app
+
+# Копируем node_modules из builder
+COPY --from=builder /app/node_modules ./node_modules
+
+# Копируем исходный код
+COPY . .
+
+# Создаем директории
+RUN mkdir -p uploads logs ssl && \
+    chmod 777 uploads logs && \
+    chmod 755 ssl
+
+# Очищаем кэш npm
+RUN npm cache clean --force
+
+EXPOSE 3000
+
+CMD ["node", "server.js"] 

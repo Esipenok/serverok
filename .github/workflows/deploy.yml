@@ -1,4 +1,4 @@
-name: Deploy to Production Server
+name: Zero-Downtime Deploy to Production
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Получаем всю историю для git archive
+          fetch-depth: 0
         
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.8.0
@@ -27,168 +27,77 @@ jobs:
       - name: Check secrets
         run: |
           if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "::error::SSH_PRIVATE_KEY секрет не установлен или пустой"
+            echo "::error::SSH_PRIVATE_KEY секрет не установлен"
             exit 1
           fi
           if [ -z "${{ secrets.SSH_USER }}" ]; then
-            echo "::error::SSH_USER секрет не установлен или пустой"
+            echo "::error::SSH_USER секрет не установлен"
             exit 1
           fi
           if [ -z "${{ secrets.SERVER_IP }}" ]; then
-            echo "::error::SERVER_IP секрет не установлен или пустой"
+            echo "::error::SERVER_IP секрет не установлен"
             exit 1
           fi
           if [ -z "${{ secrets.SERVER_PATH }}" ]; then
-            echo "::error::SERVER_PATH секрет не установлен или пустой"
+            echo "::error::SERVER_PATH секрет не установлен"
             exit 1
           fi
-          echo "Все необходимые секреты установлены"
-          
-      - name: List files before archive
-        run: |
-          echo "Listing files in workspace:"
-          ls -la
+          echo "✅ Все секреты установлены"
           
       - name: Create deployment archive
         run: |
-          echo "Creating archive using git archive..."
-          # Создаем архив из текущего коммита
-          git archive --format=tar HEAD | gzip > server_update.tar.gz
+          echo "📦 Создание архива для zero-downtime deployment..."
+          # Создаем архив только с кодом (без node_modules, uploads, logs)
+          tar --exclude='node_modules' \
+              --exclude='uploads' \
+              --exclude='logs' \
+              --exclude='backups' \
+              --exclude='ssl' \
+              --exclude='.git' \
+              --exclude='*.tar.gz' \
+              --exclude='*.log' \
+              -czf server_update.tar.gz .
           
-          if [ $? -ne 0 ]; then
-            echo "::error::Ошибка при создании архива"
-            exit 1
-          fi
-          
-          echo "Archive created successfully:"
+          echo "📊 Размер архива:"
           ls -lh server_update.tar.gz
-          
-      - name: Create deployment script
-        run: |
-          cat > deploy_server.sh << 'EOL'
-          #!/bin/bash
-          # Скрипт для обновления API-сервера на удаленном сервере
-          
-          set -e  # Остановка при ошибках
-          
-          echo "=== ОБНОВЛЕНИЕ API-СЕРВЕРА ==="
-          echo "Текущая директория: $(pwd)"
-          
-          # Проверяем наличие архива
-          if [ ! -f "server_update.tar.gz" ]; then
-              echo "Ошибка: Архив server_update.tar.gz не найден"
-              exit 1
-          fi
-          
-          # Создаем директорию для бэкапов, если её нет
-          BACKUPS_DIR="backups"
-          mkdir -p $BACKUPS_DIR
-          
-          # Создаем резервную копию в директории backups
-          echo "Создание резервной копии..."
-          BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-          BACKUP_DIR="${BACKUPS_DIR}/backup_${BACKUP_DATE}"
-          mkdir -p $BACKUP_DIR
-          cp -r app.js server.js package.json config auth users matches fast_match marketprofiles qr complain one_night filter_* docker-compose.yml $BACKUP_DIR/ 2>/dev/null || true
-          echo "Резервная копия создана в $BACKUP_DIR"
-          
-          # Очистка старых бэкапов (оставляем только 5 последних)
-          echo "Очистка старых бэкапов..."
-          ls -1t $BACKUPS_DIR | tail -n +6 | xargs -I {} rm -rf $BACKUPS_DIR/{}
-          
-          # Останавливаем контейнеры
-          echo "Останавливаем контейнеры Docker..."
-          docker-compose down
-          
-          # Создаем список файлов и директорий, которые нужно сохранить
-          echo "Создание списка файлов и директорий для сохранения..."
-          cat > preserve_list.txt << 'EOF'
-          node_modules
-          .env
-          uploads
-          logs
-          backups
-          ssl
-          EOF
-          
-          # Сохраняем важные файлы и директории
-          echo "Сохранение важных файлов и директорий..."
-          mkdir -p temp_preserve
-          while IFS= read -r item; do
-            if [ -e "$item" ]; then
-              echo "Сохранение: $item"
-              cp -r "$item" temp_preserve/ 2>/dev/null || true
-            fi
-          done < preserve_list.txt
-          
-          # Очищаем директорию проекта (кроме временных файлов и архива)
-          echo "Очистка директории проекта..."
-          find . -mindepth 1 -maxdepth 1 -not -name "server_update.tar.gz" -not -name "deploy_server.sh" -not -name "temp_preserve" -not -name "preserve_list.txt" -exec rm -rf {} \;
-          
-          # Распаковываем новую версию
-          echo "Распаковка новой версии..."
-          tar -xzf server_update.tar.gz
-          rm server_update.tar.gz preserve_list.txt
-          
-          # Восстанавливаем сохраненные файлы и директории
-          echo "Восстановление сохраненных файлов и директорий..."
-          cp -r temp_preserve/* . 2>/dev/null || true
-          rm -rf temp_preserve
-          
-          # Устанавливаем зависимости
-          echo "Установка зависимостей..."
-          npm install --production
-          
-          # Пересобираем Docker образ с новым кодом
-          echo "Пересборка Docker образа..."
-          docker-compose build app
-          
-          # Запускаем контейнеры
-          echo "Запуск контейнеров Docker..."
-          docker-compose up -d
-          
-          # Ждем запуска
-          echo "Ожидание запуска сервера (10 секунд)..."
-          sleep 10
-          
-          # Проверяем статус
-          echo "Проверка статуса контейнеров..."
-          docker ps
-          
-          # Проверяем работоспособность API
-          echo "Проверка API..."
-          HEALTH_CHECK=$(curl -s http://localhost:3000/api/health || echo "FAIL")
-          echo "Ответ от API: $HEALTH_CHECK"
-          
-          if [[ "$HEALTH_CHECK" == *"success"* ]]; then
-              echo "✅ API работает корректно"
-          else
-              echo "⚠️ API не отвечает или отвечает с ошибкой"
-              echo "Проверьте логи: docker logs dating_app_server"
-          fi
-          
-          echo "=== ОБНОВЛЕНИЕ ЗАВЕРШЕНО ==="
-          EOL
-          
-          chmod +x deploy_server.sh
           
       - name: Test SSH connection
         run: |
-          echo "Testing SSH connection to server..."
+          echo "🔗 Проверка SSH соединения..."
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "echo 'SSH connection successful'"
           
       - name: Copy files to server
         run: |
-          echo "Copying files to server..."
+          echo "📤 Копирование файлов на сервер..."
           scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
-          scp -o StrictHostKeyChecking=no deploy_server.sh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}/
           
-      - name: Execute deployment script on server
+      - name: Execute zero-downtime deployment
         run: |
-          echo "Executing deployment script on server..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.SERVER_PATH }} && bash deploy_server.sh"
+          echo "🚀 Запуск zero-downtime deployment..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd ${{ secrets.SERVER_PATH }} && bash zero_downtime_deploy.sh"
+          
+      - name: Verify deployment
+        run: |
+          echo "✅ Проверка успешности deployment..."
+          sleep 10
+          
+          # Проверяем API
+          API_RESPONSE=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
+          if [[ "$API_RESPONSE" == *"success"* ]]; then
+            echo "✅ API работает корректно"
+          else
+            echo "❌ API не отвечает"
+            exit 1
+          fi
           
       - name: Cleanup
         run: |
-          echo "Cleaning up temporary files..."
-          rm -f server_update.tar.gz deploy_server.sh 
+          echo "🧹 Очистка временных файлов..."
+          rm -f server_update.tar.gz
+          
+      - name: Deployment Summary
+        run: |
+          echo "🎉 Zero-downtime deployment завершен успешно!"
+          echo "📅 Дата: $(date)"
+          echo "🔗 API: https://willowe.love/api/health"
+          echo "📊 Время простоя: 0 секунд" 

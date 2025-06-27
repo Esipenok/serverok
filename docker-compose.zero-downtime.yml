@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # MongoDB сервис
+  # MongoDB сервис (без изменений)
   mongodb:
     image: mongo:7.0
     container_name: dating_app_mongodb
@@ -17,11 +17,13 @@ services:
     networks:
       - app-network
 
-  # Node.js сервер
+  # Node.js сервер (оптимизированный для zero-downtime)
   app:
-    build: .
+    image: node:18
     container_name: dating_app_server
     restart: unless-stopped
+    working_dir: /app
+    command: bash -c "npm install --production && node server.js"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -33,14 +35,23 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Монтируем только данные, которые должны сохраняться
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-      - ./ssl:/app/ssl
+      # Монтируем код через символическую ссылку current
+      - /app/current:/app
+      # Монтируем общие данные
+      - /app/shared/uploads:/app/uploads
+      - /app/shared/logs:/app/logs
+      - /app/shared/ssl:/app/ssl
+      - /app/shared/.env:/app/.env
     depends_on:
       - mongodb
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   mongodb_data:
