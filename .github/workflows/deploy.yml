@@ -75,21 +75,34 @@ jobs:
           echo "📤 Копирование файлов на сервер..."
           scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/app/
           
-      - name: Execute zero-downtime deployment (без проверки API)
+      - name: Execute zero-downtime deployment
         run: |
-          echo "🚀 Запуск zero-downtime deployment (без проверки API)..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd /app && bash zero_downtime_deploy_no_api_check.sh"
+          echo "🚀 Запуск zero-downtime deployment..."
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd /app && bash zero_downtime_deploy.sh"
           
-      - name: Deployment Summary (без проверки API)
+      - name: Verify deployment
         run: |
-          echo "🎉 Zero-downtime deployment завершен!"
-          echo "📅 Дата: $(date)"
-          echo "⚠️  API проверка пропущена - проверьте вручную"
-          echo "🔗 API: https://willowe.love/api/health"
-          echo "📊 Время простоя: 0 секунд"
+          echo "✅ Проверка успешности deployment..."
+          sleep 10
+          
+          # Проверяем API
+          API_RESPONSE=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
+          if [[ "$API_RESPONSE" == *"success"* ]]; then
+            echo "✅ API работает корректно"
+          else
+            echo "❌ API не отвечает"
+            exit 1
+          fi
           
       - name: Cleanup
         run: |
           echo "🧹 Очистка временных файлов..."
           rm -f server_update.tar.gz
-          rm -rf temp_deploy 
+          rm -rf temp_deploy
+          
+      - name: Deployment Summary
+        run: |
+          echo "🎉 Zero-downtime deployment завершен успешно!"
+          echo "📅 Дата: $(date)"
+          echo "🔗 API: https://willowe.love/api/health"
+          echo "📊 Время простоя: 0 секунд" 

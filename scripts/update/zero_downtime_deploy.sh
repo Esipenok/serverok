@@ -96,7 +96,7 @@ done
 # Проверяем API
 echo "Проверка API..."
 for i in {1..6}; do
-    HEALTH_CHECK=$(curl -s -L http://localhost:3000/api/health || echo "FAIL")
+    HEALTH_CHECK=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
     if [[ "$HEALTH_CHECK" == *"success"* ]]; then
         echo "✅ API работает корректно"
         break
@@ -117,7 +117,7 @@ if [[ "$HEALTH_CHECK" != *"success"* ]]; then
         sleep 10
         
         # Проверяем откат
-        ROLLBACK_CHECK=$(curl -s -L http://localhost:3000/api/health || echo "FAIL")
+        ROLLBACK_CHECK=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
         if [[ "$ROLLBACK_CHECK" == *"success"* ]]; then
             echo "✅ Откат успешен"
         else
