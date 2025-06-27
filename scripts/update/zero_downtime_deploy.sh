@@ -6,16 +6,19 @@ set -e
 echo "=== ZERO-DOWNTIME DEPLOYMENT ==="
 echo "Дата: $(date)"
 
+# Создаем новую версию
+RELEASE_NAME=$(date +%Y%m%d_%H%M%S)
+RELEASE_PATH="/app/releases/$RELEASE_NAME"
+echo "Создание новой версии: $RELEASE_NAME"
+
+# Сохраняем текущую версию для возможного отката
+CURRENT_VERSION=$(readlink /app/current | xargs basename 2>/dev/null || echo "")
+
 # Проверяем наличие архива
 if [ ! -f "server_update.tar.gz" ]; then
     echo "Ошибка: Архив server_update.tar.gz не найден"
     exit 1
 fi
-
-# Создаем новую версию
-RELEASE_NAME=$(date +%Y%m%d_%H%M%S)
-RELEASE_PATH="/app/releases/$RELEASE_NAME"
-echo "Создание новой версии: $RELEASE_NAME"
 
 # Создаем директорию для новой версии
 mkdir -p "$RELEASE_PATH"
@@ -66,13 +69,6 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ Новая версия прошла проверку"
-
-# Создаем бэкап текущей версии
-CURRENT_VERSION=$(readlink /app/current | xargs basename)
-if [ "$CURRENT_VERSION" != "" ]; then
-    echo "Создание бэкапа текущей версии: $CURRENT_VERSION"
-    cp -r "/app/releases/$CURRENT_VERSION" "/app/backups/backup_$CURRENT_VERSION"
-fi
 
 # Переключаем на новую версию (zero-downtime)
 echo "Переключение на новую версию..."
@@ -143,18 +139,17 @@ else
     echo "✅ Только одна версия, очистка не требуется"
 fi
 
-# Очищаем старые бэкапы (оставляем только последний)
-echo "Очистка старых бэкапов..."
-cd /app/backups
-BACKUP_COUNT=$(ls -1 | wc -l)
-if [ $BACKUP_COUNT -gt 1 ]; then
-    echo "Найдено $BACKUP_COUNT бэкапов, оставляем только последний..."
-    # Удаляем все бэкапы кроме самого нового
-    ls -1t | tail -n +2 | xargs -r rm -rf
-    echo "✅ Удалено $(($BACKUP_COUNT - 1)) старых бэкапов"
-else
-    echo "✅ Только один бэкап, очистка не требуется"
-fi
+# Очищаем Docker образы и контейнеры
+echo "Очистка Docker ресурсов..."
+# Удаляем остановленные контейнеры
+docker container prune -f
+# Удаляем неиспользуемые образы
+docker image prune -f
+# Удаляем неиспользуемые volumes
+docker volume prune -f
+# Удаляем неиспользуемые networks
+docker network prune -f
+echo "✅ Docker ресурсы очищены"
 
 # Показываем статус
 echo ""

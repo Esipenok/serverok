@@ -1,52 +1,42 @@
 #!/bin/bash
-# Скрипт для очистки Docker на сервере
-# Запускать периодически для освобождения места
+# Скрипт для очистки Docker ресурсов
 
-echo "=== ОЧИСТКА DOCKER НА СЕРВЕРЕ ==="
+echo "=== DOCKER CLEANUP ==="
 echo "Дата: $(date)"
 
-# Проверяем использование диска до очистки
-echo "Использование диска до очистки:"
-df -h /
-
-# Останавливаем контейнеры
-echo "Останавливаем контейнеры..."
-docker-compose down
-
-# Очищаем неиспользуемые образы, контейнеры, сети и volumes
-echo "Очищаем неиспользуемые Docker ресурсы..."
-docker system prune -a --volumes -f
-
-# Очищаем build cache
-echo "Очищаем build cache..."
-docker builder prune -f
-
-# Запускаем контейнеры обратно
-echo "Запускаем контейнеры..."
-docker-compose up -d
-
-# Ждем запуска
-echo "Ожидание запуска сервера (10 секунд)..."
-sleep 10
-
-# Проверяем статус контейнеров
-echo "Проверка статуса контейнеров:"
-docker ps
-
-# Проверяем использование диска после очистки
-echo "Использование диска после очистки:"
-df -h /
-
-# Проверяем работоспособность API
-echo "Проверка API..."
-HEALTH_CHECK=$(curl -s -L http://localhost:3000/api/health || echo "FAIL")
-echo "Ответ от API: $HEALTH_CHECK"
-
-if [[ "$HEALTH_CHECK" == *"success"* ]]; then
-    echo "✅ API работает корректно"
+echo "Очистка остановленных контейнеров..."
+STOPPED_CONTAINERS=$(docker container ls -a --filter "status=exited" --filter "status=created" -q)
+if [ -n "$STOPPED_CONTAINERS" ]; then
+    echo "Найдено остановленных контейнеров: $(echo "$STOPPED_CONTAINERS" | wc -l)"
+    docker container rm $STOPPED_CONTAINERS
+    echo "✅ Остановленные контейнеры удалены"
 else
-    echo "⚠️ API не отвечает или отвечает с ошибкой"
-    echo "Проверьте логи: docker logs dating_app_server"
+    echo "✅ Остановленных контейнеров не найдено"
 fi
 
-echo "=== ОЧИСТКА ЗАВЕРШЕНА ===" 
+echo "Очистка неиспользуемых образов..."
+UNUSED_IMAGES=$(docker images -f "dangling=true" -q)
+if [ -n "$UNUSED_IMAGES" ]; then
+    echo "Найдено неиспользуемых образов: $(echo "$UNUSED_IMAGES" | wc -l)"
+    docker rmi $UNUSED_IMAGES
+    echo "✅ Неиспользуемые образы удалены"
+else
+    echo "✅ Неиспользуемых образов не найдено"
+fi
+
+echo "Очистка неиспользуемых volumes..."
+docker volume prune -f
+
+echo "Очистка неиспользуемых networks..."
+docker network prune -f
+
+echo "Очистка неиспользуемых образов (все неиспользуемые)..."
+docker image prune -a -f
+
+echo ""
+echo "=== CLEANUP ЗАВЕРШЕН ==="
+echo "Статус контейнеров:"
+docker ps -a
+echo ""
+echo "Используемые образы:"
+docker images 
