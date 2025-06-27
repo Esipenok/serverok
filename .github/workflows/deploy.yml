@@ -86,7 +86,7 @@ jobs:
           sleep 10
           
           # Проверяем API
-          API_RESPONSE=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
+          API_RESPONSE=$(curl -s -L https://willowe.love/api/health-test-broken || echo "FAIL")
           if [[ "$API_RESPONSE" == *"success"* ]]; then
             echo "✅ API работает корректно"
           else
