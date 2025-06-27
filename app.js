@@ -107,9 +107,9 @@ console.log('[Server] Configuration:', {
 });
 
 // Health check endpoint для проверки работоспособности API
-// app.get('/api/health', (req, res) => {
-//   res.status(200).json({ status: 'success', message: 'API работает' });
-// });
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'success', message: 'API работает' });
+});
 
 // Остальные маршруты
 app.use('/api/users', userRoutes);
