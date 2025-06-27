@@ -27,6 +27,7 @@ const oneNightRoutes = require('./filter_one_night/routes');
 const oneNightInviteRoutes = require('./one_night/routes/one_night.routes');
 const oneNightStatusRoutes = require('./one_night/one_night_status/one_night_status.routes');
 const deleteAllDataRoutes = require('./delete_all_data/delete_all_data.routes');
+const inviteRoutes = require('./invites/invite.routes');
 
 
 const app = express();
@@ -107,7 +108,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/photos', photosRoutes);
 app.use('/api/matches', matchRoutes);
-// app.use('/api/like-counter', likeCounterRoutes);
+
 app.use('/api/fast-match', fastMatchRoutes);
 app.use('/api/fast-match-main', fastMatchMainRoutes);
 app.use('/api/filter-market', filterMarketRoutes);
@@ -120,6 +121,23 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/filter-one-night', oneNightRoutes);
 app.use('/api/one-night', oneNightInviteRoutes);
 app.use('/api/one-night-status', oneNightStatusRoutes);
+
+// Проверка токена для маршрутов /api/invites/
+app.use('/api/invites', (req, res, next) => {
+  console.log('[App] Запрос к /api/invites:', req.method, req.url);
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Требуется авторизация'
+    });
+  }
+  console.log('[App] Авторизация прошла успешно для /api/invites');
+  next();
+});
+
+app.use('/api/invites', inviteRoutes);
+
 app.use('/api/delete-all-user-data', (req, res, next) => {
   console.log('[App] Запрос к /api/delete-all-user-data:', req.method, req.url);
   const authHeader = req.headers['authorization'];

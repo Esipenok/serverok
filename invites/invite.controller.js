@@ -4,22 +4,27 @@ const User = require('../auth/models/User');
 exports.getInvitesCount = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log('[InviteController] Запрос количества инвайтов для пользователя:', userId);
 
     const user = await User.findOne({ userId });
+    console.log('[InviteController] Найден пользователь:', user ? 'да' : 'нет');
+    
     if (!user) {
+      console.log('[InviteController] Пользователь не найден');
       return res.status(404).json({ 
         success: false,
         message: 'Пользователь не найден' 
       });
     }
 
+    console.log('[InviteController] Количество инвайтов:', user.invites || 0);
     return res.status(200).json({
       success: true,
       invitesCount: user.invites || 0
     });
 
   } catch (error) {
-    console.error('Ошибка при получении количества инвайтов:', error);
+    console.error('[InviteController] Ошибка при получении количества инвайтов:', error);
     return res.status(500).json({ 
       success: false,
       message: 'Внутренняя ошибка сервера' 
