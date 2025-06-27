@@ -119,12 +119,12 @@
 {"level":"info","message":"Market counter initialized","timestamp":"2025-06-26T19:36:07.507Z"}
 {"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-26T19:36:07.511Z"}
 {"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-26T19:36:07.511Z"}
-{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-27T14:54:59.620Z"}
-{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-27T14:54:59.625Z"}
-{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-27T14:54:59.626Z"}
-{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-27T14:54:59.649Z"}
-{"level":"info","message":"Initializing database components...","timestamp":"2025-06-27T14:54:59.650Z"}
-{"level":"info","message":"User counter initialized","timestamp":"2025-06-27T14:54:59.687Z"}
-{"level":"info","message":"Market counter initialized","timestamp":"2025-06-27T14:54:59.696Z"}
-{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-27T14:54:59.725Z"}
-{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-27T14:54:59.726Z"}
+{"level":"info","message":"Token cleanup scheduled every 60 minutes","timestamp":"2025-06-26T19:37:36.886Z"}
+{"level":"info","message":"Development server running on port 3000","timestamp":"2025-06-26T19:37:36.892Z"}
+{"level":"info","message":"Server URL: http://10.0.2.2:3000","timestamp":"2025-06-26T19:37:36.892Z"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-06-26T19:37:36.916Z"}
+{"level":"info","message":"Initializing database components...","timestamp":"2025-06-26T19:37:36.916Z"}
+{"level":"info","message":"User counter initialized","timestamp":"2025-06-26T19:37:36.953Z"}
+{"level":"info","message":"Market counter initialized","timestamp":"2025-06-26T19:37:36.964Z"}
+{"level":"info","message":"FastMatch TTL indexes updated","timestamp":"2025-06-26T19:37:36.975Z"}
+{"level":"info","message":"All database components initialized successfully","timestamp":"2025-06-26T19:37:36.976Z"}
