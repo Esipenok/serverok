@@ -1,0 +1,4 @@
+Проверка статуста докеров
+ssh -i "C:\Users\Andrey\.ssh\id_ed25519" root@46.62.131.90 "cd /app && docker-compose -f docker-compose.zero-downtime.yml ps"
+Проверка логов
+ssh -i "C:\Users\Andrey\.ssh\id_ed25519" root@46.62.131.90 "docker logs dating_app_server --tail 10"

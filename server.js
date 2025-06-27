@@ -229,10 +229,11 @@ if (appConfig.nodeEnv === 'production') {
       logger.info(`HTTP Server running on port 80 (redirecting to HTTPS)`);
     });
   } catch (error) {
-    logger.error(`SSL certificates not found, falling back to HTTP: ${error.message}`);
-    // Если сертификаты не найдены, запускаем HTTP сервер
+    logger.error(`SSL certificates not found, falling back to HTTP on port ${PORT}: ${error.message}`);
+    // Если сертификаты не найдены, запускаем HTTP сервер на порту 3000
     httpServer.listen(PORT, () => {
-      logger.info(`HTTP Server running on port ${PORT}`);
+      logger.info(`HTTP Server running on port ${PORT} (SSL certificates not found)`);
+      logger.info(`Server URL: ${appConfig.baseUrl}`);
     });
   }
 } else {

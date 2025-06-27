@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
 const { errorHandler } = require('./auth/middleware/error.middleware');
 const { corsOptions, helmetConfig, cookieParser } = require('./security/config');
 const { standardLimiter } = require('./auth/middleware/rate-limiter');
@@ -32,13 +33,19 @@ const inviteRoutes = require('./invites/invite.routes');
 
 const app = express();
 
-// Настройка доверия к прокси для работы с Nginx
-app.set('trust proxy', true);
+// Настройка доверия к прокси для работы с Nginx (исправлено для rate limiter)
+app.set('trust proxy', 1); // Доверяем только первому прокси
 
-// Перенаправление HTTP на HTTPS в production
-if (process.env.NODE_ENV === 'production') {
+// Проверяем наличие SSL сертификатов
+const sslCertExists = fs.existsSync(path.join(__dirname, 'ssl', 'cert.pem'));
+
+// Перенаправление HTTP на HTTPS в production только если есть SSL сертификаты
+if (process.env.NODE_ENV === 'production' && sslCertExists) {
   app.use(redirectToHttps);
   app.use(addHstsHeader);
+  console.log('✅ SSL сертификаты найдены, HTTPS редирект включен');
+} else if (process.env.NODE_ENV === 'production' && !sslCertExists) {
+  console.log('⚠️  SSL сертификаты не найдены, HTTPS редирект отключен');
 }
 
 // Базовые middleware безопасности
