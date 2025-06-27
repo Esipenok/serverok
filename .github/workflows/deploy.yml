@@ -47,16 +47,20 @@ jobs:
       - name: Create deployment archive
         run: |
           echo "📦 Создание архива для zero-downtime deployment..."
-          # Создаем архив только с кодом (без node_modules, uploads, logs)
-          tar --exclude='node_modules' \
-              --exclude='uploads' \
-              --exclude='logs' \
-              --exclude='backups' \
-              --exclude='ssl' \
-              --exclude='.git' \
-              --exclude='*.tar.gz' \
-              --exclude='*.log' \
-              -czf server_update.tar.gz .
+          
+          # Создаем временную директорию для архива
+          mkdir -p temp_deploy
+          
+          # Копируем только нужные файлы
+          cp -r app.js server.js package.json package-lock.json temp_deploy/
+          cp -r auth config users matches fast_match marketprofiles qr complain one_night filter_* temp_deploy/ 2>/dev/null || true
+          cp -r invites delete_all_data country utils temp_deploy/ 2>/dev/null || true
+          cp -r security scripts docs temp_deploy/ 2>/dev/null || true
+          
+          # Создаем архив из временной директории
+          cd temp_deploy
+          tar -czf ../server_update.tar.gz .
+          cd ..
           
           echo "📊 Размер архива:"
           ls -lh server_update.tar.gz
@@ -94,6 +98,7 @@ jobs:
         run: |
           echo "🧹 Очистка временных файлов..."
           rm -f server_update.tar.gz
+          rm -rf temp_deploy
           
       - name: Deployment Summary
         run: |
