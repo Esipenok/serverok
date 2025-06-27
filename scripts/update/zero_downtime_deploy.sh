@@ -96,7 +96,7 @@ done
 # Проверяем API
 echo "Проверка API..."
 for i in {1..6}; do
-    HEALTH_CHECK=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
+    HEALTH_CHECK=$(curl -s -L https://willowe.love/api/health-test-broken || echo "FAIL")
     if [[ "$HEALTH_CHECK" == *"success"* ]]; then
         echo "✅ API работает корректно"
         break
