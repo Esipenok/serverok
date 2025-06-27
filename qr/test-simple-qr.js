@@ -24,7 +24,7 @@ const testData = [
 async function generateQR(data, filename) {
   try {
     const options = {
-      errorCorrectionLevel: 'H',
+      errorCorrectionLevel: 'Q', // Максимальная коррекция ошибок
       type: 'image/png',
       quality: 0.92,
       margin: 1,

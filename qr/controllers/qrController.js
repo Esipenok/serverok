@@ -547,7 +547,7 @@ exports.getQrData = async (req, res) => {
         width: 500,
         height: 500,
         margin: 20,
-        errorCorrectionLevel: 'H',
+        errorCorrectionLevel: 'Q',
         // Градиент для точек
         dotsGradient: {
           type: 'linear',
