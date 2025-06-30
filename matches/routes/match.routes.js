@@ -40,6 +40,9 @@ console.log('Доступные методы контроллера:', available
 // Получение списка всех матчей пользователя
 router.get('/', matchController.getUserMatches);
 
+// Проверка лайка между пользователями
+router.get('/check-like/:userId/:targetUserId', matchController.checkLike);
+
 // Лайк пользователя
 router.post('/like/:userId', matchController.likeUser);
 

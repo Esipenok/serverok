@@ -47,6 +47,9 @@ exports.likeUser = async (req, res) => {
       user2: { $in: [userId, targetUserId] }
     });
     
+    let isNewMatch = false;
+    let wasMutualLike = false;
+    
     if (!matchRecord) {
       // Создаем новую запись о матче
       const [user1, user2] = userId < targetUserId ? [userId, targetUserId] : [targetUserId, userId];
@@ -60,6 +63,10 @@ exports.likeUser = async (req, res) => {
         feature: 'finder'
       });
     } else {
+      // Проверяем, был ли уже лайк от targetUserId к userId
+      const targetUserLiked = userId === matchRecord.user1 ? matchRecord.user2Liked : matchRecord.user1Liked;
+      wasMutualLike = targetUserLiked === true;
+      
       // Обновляем статус лайка
       if (userId === matchRecord.user1) {
         matchRecord.user1Liked = true;
@@ -71,14 +78,12 @@ exports.likeUser = async (req, res) => {
     // Обновляем статус матча
     if (matchRecord.user1Liked && matchRecord.user2Liked) {
       matchRecord.status = 'matched';
+      isNewMatch = true;
     }
     
     await matchRecord.save();
     
-    // Проверяем, образовался ли матч
-    const isNewMatch = matchRecord.status === 'matched';
-    
-    // Если образовался новый матч, отправляем расширенную информацию
+    // Если образовался новый матч, отправляем уведомление о мэтче
     if (isNewMatch) {
       const otherUserId = userId === matchRecord.user1 ? matchRecord.user2 : matchRecord.user1;
       const targetUserInfo = await User.findOne({ userId: otherUserId })
@@ -102,7 +107,6 @@ exports.likeUser = async (req, res) => {
       ]);
       
       // Отправляем уведомление второму пользователю о новом мэтче
-      // Получаем данные текущего пользователя для уведомления
       const currentUserInfo = await User.findOne({ userId: userId })
         .select('name photos');
       
@@ -116,11 +120,19 @@ exports.likeUser = async (req, res) => {
         photoUrl: currentUserPhotoUrl
       };
       
-      // Отправляем уведомление асинхронно (не блокируем ответ)
+      // Отправляем уведомление о мэтче асинхронно
       notificationService.sendMatchNotification(otherUserId, notificationData)
         .catch(error => {
           console.error('Ошибка отправки уведомления о мэтче:', error);
         });
+      
+      // Если был взаимный лайк, уменьшаем счетчик лайков
+      if (wasMutualLike) {
+        await notificationService.decrementLikeCounter(otherUserId)
+          .catch(error => {
+            console.error('Ошибка уменьшения счетчика лайков:', error);
+          });
+      }
       
       return res.status(200).json({
         message: 'Matched!',
@@ -199,6 +211,8 @@ exports.dislikeUser = async (req, res) => {
       user2: { $in: [userId, targetUserId] }
     });
     
+    let wasMutualLike = false;
+    
     if (!matchRecord) {
       const [user1, user2] = userId < targetUserId ? [userId, targetUserId] : [targetUserId, userId];
       const isUserFirst = userId === user1;
@@ -212,6 +226,10 @@ exports.dislikeUser = async (req, res) => {
         feature: 'finder'
       });
     } else {
+      // Проверяем, был ли лайк от targetUserId к userId
+      const targetUserLiked = userId === matchRecord.user1 ? matchRecord.user2Liked : matchRecord.user1Liked;
+      wasMutualLike = targetUserLiked === true;
+      
       if (userId === matchRecord.user1) {
         matchRecord.user1Liked = false;
       } else {
@@ -223,6 +241,14 @@ exports.dislikeUser = async (req, res) => {
     matchRecord.lastInteraction = new Date();
     await matchRecord.save();
     
+    // Если был взаимный лайк, уменьшаем счетчик лайков
+    if (wasMutualLike) {
+      await notificationService.decrementLikeCounter(targetUserId)
+        .catch(error => {
+          console.error('Ошибка уменьшения счетчика лайков:', error);
+        });
+    }
+    
     return res.status(200).json({
       message: 'Disliked',
       isMatch: false
@@ -230,6 +256,46 @@ exports.dislikeUser = async (req, res) => {
     
   } catch (error) {
     console.error('Error disliking user:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Check if a user has liked another user
+exports.checkLike = async (req, res) => {
+  try {
+    const { userId, targetUserId } = req.params;
+    
+    if (!userId || !targetUserId) {
+      return res.status(400).json({ message: 'Both user IDs are required' });
+    }
+    
+    if (userId === targetUserId) {
+      return res.status(400).json({ message: 'Cannot check like for yourself' });
+    }
+
+    // Находим запись о паре пользователей
+    const matchRecord = await Match.findOne({ 
+      user1: { $in: [userId, targetUserId] },
+      user2: { $in: [userId, targetUserId] }
+    });
+    
+    if (!matchRecord) {
+      return res.status(200).json({ hasLiked: false });
+    }
+
+    // Определяем, кто из пользователей user1, а кто user2
+    let hasLiked = false;
+    
+    if (userId === matchRecord.user1) {
+      hasLiked = matchRecord.user1Liked === true;
+    } else if (userId === matchRecord.user2) {
+      hasLiked = matchRecord.user2Liked === true;
+    }
+    
+    return res.status(200).json({ hasLiked });
+    
+  } catch (error) {
+    console.error('Error checking like:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };

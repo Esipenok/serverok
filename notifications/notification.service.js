@@ -248,6 +248,105 @@ class NotificationService {
       return false;
     }
   }
+
+  /**
+   * Уменьшает счетчик лайков в уведомлении like_counter
+   * @param {string} userId - ID пользователя, у которого нужно уменьшить счетчик
+   * @returns {Promise<boolean>} - Успешность операции
+   */
+  async decrementLikeCounter(userId) {
+    try {
+      console.log(`Уменьшаем счетчик лайков для пользователя ${userId}`);
+
+      // Получаем все уведомления пользователя
+      const url = `${this.firebaseUrl}/notifications/${userId}.json`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`Нет уведомлений для пользователя ${userId}`);
+          return false;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data) {
+        console.log(`Нет данных уведомлений для пользователя ${userId}`);
+        return false;
+      }
+
+      // Ищем уведомление типа like_counter
+      let likeCounterNotificationId = null;
+      let likeCounterNotification = null;
+
+      for (const [id, notification] of Object.entries(data)) {
+        if (notification.type === 'like_counter' && 
+            notification.data && 
+            notification.data.likeCount != null) {
+          likeCounterNotificationId = id;
+          likeCounterNotification = notification;
+          break;
+        }
+      }
+
+      if (!likeCounterNotificationId || !likeCounterNotification) {
+        console.log(`Не найдено уведомление типа like_counter для пользователя ${userId}`);
+        return false;
+      }
+
+      // Уменьшаем счетчик на 1
+      const currentCount = likeCounterNotification.data.likeCount;
+      const newCount = currentCount - 1;
+
+      console.log(`Текущий счетчик: ${currentCount}, новый счетчик: ${newCount}`);
+
+      if (newCount <= 0) {
+        // Если счетчик стал 0 или меньше, удаляем уведомление
+        const deleteUrl = `${this.firebaseUrl}/notifications/${userId}/${likeCounterNotificationId}.json`;
+        const deleteResponse = await fetch(deleteUrl, {
+          method: 'DELETE'
+        });
+
+        if (!deleteResponse.ok) {
+          throw new Error(`HTTP error! status: ${deleteResponse.status}`);
+        }
+
+        console.log(`Уведомление удалено (счетчик стал 0) для пользователя ${userId}`);
+      } else {
+        // Обновляем счетчик и текст уведомления
+        const updateUrl = `${this.firebaseUrl}/notifications/${userId}/${likeCounterNotificationId}.json`;
+        const updatedData = {
+          data: {
+            ...likeCounterNotification.data,
+            likeCount: newCount
+          },
+          title: newCount === 1 ? 'Новый лайк!' : 'Новые лайки!',
+          body: newCount === 1 ? 'Кто-то поставил вам лайк' : `${newCount} человек поставили вам лайк`,
+          timestamp: Date.now()
+        };
+
+        const updateResponse = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedData)
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error(`HTTP error! status: ${updateResponse.status}`);
+        }
+
+        console.log(`Счетчик обновлен до ${newCount} для пользователя ${userId}`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Ошибка уменьшения счетчика лайков:', error.message);
+      return false;
+    }
+  }
 }
 
 module.exports = new NotificationService(); 

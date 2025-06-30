@@ -2,3 +2,22 @@
 ssh -i "C:\Users\Andrey\.ssh\id_ed25519" root@46.62.131.90 "cd /app && docker-compose -f docker-compose.zero-downtime.yml ps"
 Проверка логов
 ssh -i "C:\Users\Andrey\.ssh\id_ed25519" root@46.62.131.90 "docker logs dating_app_server --tail 10"
+
+Перезапустить все сервисы
+   ssh -i "C:\Users\Andrey\.ssh\id_ed25519" root@46.62.131.90 "cd /app && docker-compose -f docker-compose.zero-downtime.yml up -d"
+
+Для закачки файлов по отдельности
+scp -i "C:\Users\Andrey\.ssh\id_ed25519" test-kafka.js root@46.62.131.90:/app/test-kafka.js
+
+4. Порядок действий
+Настроить и проверить nginx (reverse proxy) +
+Добавить Redis (docker-compose, интеграция с Node.js) +
+Добавить Kafka (docker-compose, интеграция с Node.js)
+Добавить Prometheus и Grafana (docker-compose)
+Настроить экспортеры для сбора метрик
+Создать дашборды в Grafana для мониторинга Redis, Kafka, Node.js, nginx
+Постепенно внедрять очереди и события в бизнес-логику приложения
+
+Разобраться, какие папки заливаются 
+какие исключения 
+что с файлами в корне 
