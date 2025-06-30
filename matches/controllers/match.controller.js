@@ -135,6 +135,15 @@ exports.likeUser = async (req, res) => {
           console.error('Ошибка уменьшения счетчика лайков при мэтче:', error);
         });
       
+      // Удаляем запись матча из базы данных после успешного создания мэтча
+      // так как все данные уже обработаны и переданы клиенту
+      try {
+        await Match.findByIdAndDelete(matchRecord._id);
+        console.log(`Запись матча ${matchRecord._id} удалена после создания мэтча`);
+      } catch (error) {
+        console.error('Ошибка удаления записи матча после мэтча:', error);
+      }
+      
       return res.status(200).json({
         message: 'Matched!',
         isMatch: true,

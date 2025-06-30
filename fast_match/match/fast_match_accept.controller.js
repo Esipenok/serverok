@@ -153,6 +153,15 @@ exports.acceptFastMatch = async (req, res) => {
       await FastMatch.deleteOne({ _id: fastMatch._id });
       console.log(`Удалена запись fast_match между ${actualUserFirst} и ${actualUserSecond}`);
       
+      // Удаляем запись матча из базы данных после успешного создания быстрого мэтча
+      // так как все данные уже обработаны и переданы клиенту
+      try {
+        await Match.findByIdAndDelete(match._id);
+        console.log(`Запись матча ${match._id} удалена после создания быстрого мэтча`);
+      } catch (error) {
+        console.error('Ошибка удаления записи матча после быстрого мэтча:', error);
+      }
+      
       // Получаем информацию о пользователе, с которым произошел матч
       const otherUserId = actualUserFirst === req.headers['user-id'] ? actualUserSecond : actualUserFirst;
       const otherUser = await User.findOne({ userId: otherUserId }).select('userId name photos birthday about');
