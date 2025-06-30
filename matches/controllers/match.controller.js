@@ -128,13 +128,12 @@ exports.likeUser = async (req, res) => {
           console.error('Ошибка отправки уведомления о мэтче:', error);
         });
       
-      // Если был взаимный лайк, уменьшаем счетчик лайков
-      if (wasMutualLike) {
-        await notificationService.decrementLikeCounter(otherUserId)
-          .catch(error => {
-            console.error('Ошибка уменьшения счетчика лайков:', error);
-          });
-      }
+      // При создании мэтча всегда уменьшаем счетчик лайков у otherUserId
+      // так как он ответил взаимностью на лайк и создал пару
+      await notificationService.decrementLikeCounter(otherUserId)
+        .catch(error => {
+          console.error('Ошибка уменьшения счетчика лайков при мэтче:', error);
+        });
       
       return res.status(200).json({
         message: 'Matched!',
