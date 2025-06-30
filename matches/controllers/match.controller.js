@@ -216,6 +216,7 @@ exports.dislikeUser = async (req, res) => {
     });
     
     let wasMutualLike = false;
+    let shouldDecrementNotification = false;
     
     if (!matchRecord) {
       const [user1, user2] = userId < targetUserId ? [userId, targetUserId] : [targetUserId, userId];
@@ -234,6 +235,11 @@ exports.dislikeUser = async (req, res) => {
       const targetUserLiked = userId === matchRecord.user1 ? matchRecord.user2Liked : matchRecord.user1Liked;
       wasMutualLike = targetUserLiked === true;
       
+      // Если targetUserId лайкнул userId, то при дизлайке нужно уменьшить счетчик у userId
+      if (targetUserLiked === true) {
+        shouldDecrementNotification = true;
+      }
+      
       if (userId === matchRecord.user1) {
         matchRecord.user1Liked = false;
       } else {
@@ -245,9 +251,9 @@ exports.dislikeUser = async (req, res) => {
     matchRecord.lastInteraction = new Date();
     await matchRecord.save();
     
-    // Если был взаимный лайк, уменьшаем счетчик лайков
-    if (wasMutualLike) {
-      await notificationService.decrementLikeCounter(targetUserId)
+    // Если targetUserId лайкнул userId, уменьшаем счетчик лайков у userId
+    if (shouldDecrementNotification) {
+      await notificationService.decrementLikeCounter(userId)
         .catch(error => {
           console.error('Ошибка уменьшения счетчика лайков:', error);
         });
