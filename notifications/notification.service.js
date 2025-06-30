@@ -6,8 +6,9 @@ class NotificationService {
   }
 
   /**
-   * Отправляет простое уведомление о лайке (likeCount всегда 1)
-   * Вся логика подсчета происходит в Firebase через Cloud Functions
+   * Отправляет уведомление о лайке с увеличением счётчика
+   * Если уведомление уже существует - увеличивает счётчик
+   * Если нет - создаёт новое
    * @param {string} targetUserId - ID пользователя, которому отправляется уведомление
    * @returns {Promise<boolean>} - Успешность операции
    */
@@ -15,49 +16,83 @@ class NotificationService {
     try {
       const timestamp = Date.now();
       
-      // Проверяем, не отправляли ли мы уже уведомление в последние 5 секунд
-      const recentNotifications = await this.getUserNotifications(targetUserId);
-      const recentLikeNotification = recentNotifications.find(notification => 
-        notification.type === 'like_counter' && 
-        (timestamp - notification.timestamp) < 5000 // 5 секунд
+      // Получаем существующие уведомления пользователя
+      const existingNotifications = await this.getUserNotifications(targetUserId);
+      
+      // Ищем существующее уведомление типа like_counter
+      const existingLikeNotification = existingNotifications.find(notification => 
+        notification.type === 'like_counter'
       );
       
-      if (recentLikeNotification) {
-        console.log(`Недавнее уведомление о лайке уже существует для пользователя ${targetUserId}, пропускаем`);
+      if (existingLikeNotification) {
+        // Увеличиваем счётчик в существующем уведомлении
+        const currentCount = existingLikeNotification.data?.likeCount || 1;
+        const newCount = currentCount + 1;
+        
+        const updatedData = {
+          data: {
+            ...existingLikeNotification.data,
+            likeCount: newCount,
+            timestamp: timestamp
+          },
+          title: newCount === 1 ? 'Новый лайк!' : 'Новые лайки!',
+          body: newCount === 1 ? 'Кто-то поставил вам лайк' : `${newCount} человек поставили вам лайк`,
+          timestamp: timestamp
+        };
+
+        const updateUrl = `${this.firebaseUrl}/notifications/${targetUserId}/${existingLikeNotification.id}.json`;
+        
+        const response = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedData)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+          return false;
+        }
+
+        console.log(`Счётчик лайков увеличен до ${newCount} для пользователя ${targetUserId}`);
+        return true;
+        
+      } else {
+        // Создаём новое уведомление
+        const notificationData = {
+          type: 'like_counter',
+          title: 'Новый лайк!',
+          body: 'Кто-то поставил вам лайк',
+          data: {
+            likeCount: 1,
+            timestamp: timestamp
+          },
+          timestamp: timestamp,
+          read: false
+        };
+
+        const url = `${this.firebaseUrl}/notifications/${targetUserId}.json`;
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(notificationData)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+          return false;
+        }
+
+        const result = await response.json();
+        console.log(`Новое уведомление о лайке создано для пользователя ${targetUserId}, ID: ${result.name}`);
         return true;
       }
-      
-      const notificationData = {
-        type: 'like_counter',
-        title: 'Новый лайк!',
-        body: 'Кто-то поставил вам лайк',
-        data: {
-          likeCount: 1, // Всегда 1! Подсчет происходит в Firebase
-          timestamp: timestamp
-        },
-        timestamp: timestamp,
-        read: false
-      };
-
-      const url = `${this.firebaseUrl}/notifications/${targetUserId}.json`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(notificationData)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-        return false;
-      }
-
-      const result = await response.json();
-      console.log(`Уведомление о лайке отправлено пользователю ${targetUserId}, ID: ${result.name}`);
-      return true;
       
     } catch (error) {
       console.error('Ошибка отправки уведомления о лайке:', error.message);
