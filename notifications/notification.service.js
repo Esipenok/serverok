@@ -15,6 +15,18 @@ class NotificationService {
     try {
       const timestamp = Date.now();
       
+      // Проверяем, не отправляли ли мы уже уведомление в последние 5 секунд
+      const recentNotifications = await this.getUserNotifications(targetUserId);
+      const recentLikeNotification = recentNotifications.find(notification => 
+        notification.type === 'like_counter' && 
+        (timestamp - notification.timestamp) < 5000 // 5 секунд
+      );
+      
+      if (recentLikeNotification) {
+        console.log(`Недавнее уведомление о лайке уже существует для пользователя ${targetUserId}, пропускаем`);
+        return true;
+      }
+      
       const notificationData = {
         type: 'like_counter',
         title: 'Новый лайк!',

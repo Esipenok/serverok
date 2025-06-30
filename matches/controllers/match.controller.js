@@ -12,6 +12,8 @@ exports.likeUser = async (req, res) => {
     const userId = req.user.id;
     const targetUserId = req.params.userId;
     
+    console.log(`[LIKE] Запрос на лайк от ${userId} к ${targetUserId}, время: ${new Date().toISOString()}`);
+    
     // Валидируем что targetUserId существует
     if (!targetUserId) {
       return res.status(400).json({ message: 'Target user ID is required' });
@@ -156,10 +158,12 @@ exports.likeUser = async (req, res) => {
       
       // Отправляем уведомление о лайке (простое уведомление с likeCount: 1)
       // Вся логика подсчета происходит в Firebase через Cloud Functions
-      notificationService.sendLikeNotification(targetUserId)
-        .catch(error => {
-          console.error('Ошибка отправки уведомления о лайке:', error);
-        });
+      try {
+        await notificationService.sendLikeNotification(targetUserId);
+        console.log(`Уведомление о лайке отправлено пользователю ${targetUserId}`);
+      } catch (error) {
+        console.error('Ошибка отправки уведомления о лайке:', error);
+      }
       
       return res.status(200).json({
         message: 'Liked',
