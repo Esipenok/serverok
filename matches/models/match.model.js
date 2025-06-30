@@ -59,15 +59,9 @@ matchSchema.pre('save', function(next) {
     this.user2Liked = tempLiked;
   }
   
-  // Если статус "disliked", устанавливаем дату удаления через 10 дней
-  // Для matched и pending статусов убираем дату удаления
-  if (this.status === 'disliked') {
-    const tenDaysFromNow = new Date();
-    tenDaysFromNow.setDate(tenDaysFromNow.getDate() + 10);
-    this.expiresAt = tenDaysFromNow;
-  } else {
-    this.expiresAt = null;
-  }
+  // Убираем TTL логику, так как записи со статусом disliked теперь удаляются сразу
+  // в контроллере dislikeUser
+  this.expiresAt = null;
   
   next();
 });

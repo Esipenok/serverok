@@ -259,6 +259,14 @@ exports.dislikeUser = async (req, res) => {
         });
     }
     
+    // Удаляем запись матча из базы данных, так как статус стал disliked
+    try {
+      await Match.findByIdAndDelete(matchRecord._id);
+      console.log(`Запись матча ${matchRecord._id} удалена (статус: disliked)`);
+    } catch (error) {
+      console.error('Ошибка удаления записи матча:', error);
+    }
+    
     return res.status(200).json({
       message: 'Disliked',
       isMatch: false
