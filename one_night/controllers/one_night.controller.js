@@ -1,5 +1,6 @@
 const OneNight = require('../models/one_night.model');
 const User = require('../../auth/models/User');
+const notificationService = require('../../notifications/notification.service');
 
 // Создание нового приглашения
 exports.createInvitation = async (req, res) => {
@@ -27,6 +28,15 @@ exports.createInvitation = async (req, res) => {
 
         await invitation.save();
         console.log('Приглашение создано:', invitation);
+
+        // Отправляем уведомление пользователю userId2
+        try {
+            await notificationService.sendOneNightNotification(userId2);
+            console.log(`Уведомление о one night приглашении отправлено пользователю ${userId2}`);
+        } catch (notificationError) {
+            console.error('Ошибка отправки уведомления:', notificationError);
+            // Продолжаем выполнение даже при ошибке уведомления
+        }
 
         res.status(201).json({ message: 'Приглашение создано', invitation });
     } catch (error) {
@@ -103,6 +113,15 @@ exports.handleResponse = async (req, res) => {
 
         await invitation.save();
 
+        // Уменьшаем счетчик уведомлений у пользователя userId2 (принял или отклонил)
+        try {
+            await notificationService.decrementOneNightCounter(userId2);
+            console.log(`Счетчик one night уведомлений уменьшен для пользователя ${userId2}`);
+        } catch (notificationError) {
+            console.error('Ошибка уменьшения счетчика уведомлений:', notificationError);
+            // Продолжаем выполнение даже при ошибке уведомления
+        }
+
         // Отправляем ответ и удаляем запись
         const result = invitation.status;
         await OneNight.deleteOne({ _id: invitation._id });
@@ -123,6 +142,15 @@ exports.deleteInvitation = async (req, res) => {
 
         if (!invitation) {
             return res.status(404).json({ message: 'Запрос не найден' });
+        }
+
+        // Уменьшаем счетчик уведомлений у пользователя userId2 (отмена приглашения)
+        try {
+            await notificationService.decrementOneNightCounter(userId2);
+            console.log(`Счетчик one night уведомлений уменьшен для пользователя ${userId2} (отмена приглашения)`);
+        } catch (notificationError) {
+            console.error('Ошибка уменьшения счетчика уведомлений:', notificationError);
+            // Продолжаем выполнение даже при ошибке уведомления
         }
 
         // Находим и удаляем запрос

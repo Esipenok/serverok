@@ -1,6 +1,7 @@
 const FastMatch = require('../models/fast_match.model');
 const User = require('../../auth/models/User');
 const Match = require('../../matches/models/match.model');
+const notificationService = require('../../notifications/notification.service');
 
 /**
  * Контроллер для принятия запроса быстрого свидания и создания матча
@@ -57,6 +58,15 @@ exports.acceptFastMatch = async (req, res) => {
     // Устанавливаем статус второго пользователя в true
     fastMatch.user_second_status = true;
     await fastMatch.save();
+    
+    // Удаляем уведомление у получателя (user_second) при любом ответе
+    try {
+      await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
+      console.log(`Fast match уведомление удалено для пользователя ${fastMatch.user_second} (ответ на приглашение)`);
+    } catch (notificationError) {
+      console.error('Ошибка удаления уведомления:', notificationError);
+      // Продолжаем выполнение даже при ошибке уведомления
+    }
     
     // Если оба статуса true, создаем матч
     if (fastMatch.user_first_status && fastMatch.user_second_status) {

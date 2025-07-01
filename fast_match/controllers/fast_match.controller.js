@@ -3,6 +3,7 @@ const User = require('../../auth/models/User');
 const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
+const notificationService = require('../../notifications/notification.service');
 
 // Создание записи в базе данных fast_match
 exports.createFastMatch = async (req, res) => {
@@ -56,6 +57,26 @@ exports.createFastMatch = async (req, res) => {
     await fastMatch.save();
     
     console.log(`Создан запрос fast_match между ${user_first} и ${user_second}, истекает в ${expireDate.toISOString()}`);
+    
+    // Отправляем уведомление пользователю user_second
+    try {
+      // Получаем данные отправителя для уведомления
+      const sender = await User.findOne({ userId: user_first }).select('userId name photos');
+      
+      if (sender) {
+        const senderData = {
+          userId: sender.userId,
+          name: sender.name || 'Пользователь',
+          photoUrl: sender.photos && sender.photos.length > 0 ? sender.photos[0] : null
+        };
+        
+        await notificationService.sendFastMatchNotification(user_second, senderData, fastMatch._id.toString());
+        console.log(`Уведомление о fast match отправлено пользователю ${user_second}`);
+      }
+    } catch (notificationError) {
+      console.error('Ошибка отправки уведомления:', notificationError);
+      // Продолжаем выполнение даже при ошибке уведомления
+    }
     
     return res.status(200).json({
       success: true,
@@ -137,6 +158,15 @@ exports.deleteFastMatch = async (req, res) => {
         success: false, 
         message: 'Запись не найдена' 
       });
+    }
+    
+    // Удаляем уведомление у получателя (user_second)
+    try {
+      await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
+      console.log(`Fast match уведомление удалено для пользователя ${fastMatch.user_second}`);
+    } catch (notificationError) {
+      console.error('Ошибка удаления уведомления:', notificationError);
+      // Продолжаем выполнение даже при ошибке уведомления
     }
     
     // Удаляем запись
