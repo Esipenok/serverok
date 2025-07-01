@@ -1,164 +1,191 @@
-# Система уведомлений (Firebase)
+# Система уведомлений Willowe
 
-Упрощенная система для отправки уведомлений в Firebase Realtime Database. Вся логика подсчета лайков происходит в Firebase через Cloud Functions.
+## Обзор
 
-## Как это работает
+Система уведомлений Willowe поддерживает несколько типов уведомлений для различных функций приложения. Все уведомления сохраняются в Firebase Realtime Database и управляются через единый сервис.
 
-1. **Сервер**: Отправляет простое уведомление с `likeCount: 1`
-2. **Firebase Cloud Function**: Автоматически подсчитывает лайки и обновляет счетчик
-3. **Клиент**: Получает актуальный счетчик из последнего уведомления типа `like_counter`
+## Типы уведомлений
 
-## Структура данных в Firebase
+### 1. Лайки (`like_counter`)
+- **Описание**: Счетчик лайков с возможностью увеличения/уменьшения
+- **Структура**: Одно уведомление на пользователя с счетчиком
+- **Управление**: Увеличивается при новом лайке, уменьшается при отмене
 
-### Уведомления
+### 2. One Night (`one_night_counter`)
+- **Описание**: Счетчик приглашений на одну ночь
+- **Структура**: Одно уведомление на пользователя с счетчиком
+- **Управление**: Увеличивается при приглашении, уменьшается при ответе/отмене
+
+### 3. Fast Match (`fast_match`)
+- **Описание**: Отдельные уведомления для каждого приглашения на быструю встречу
+- **Структура**: Отдельное уведомление для каждого приглашения
+- **Время жизни**: 10 минут (автоматическое удаление)
+- **Управление**: Создается при приглашении, удаляется при ответе или истечении времени
+
+### 4. Fast Match мэтчи (`match`)
+- **Описание**: Уведомления о новых мэтчах в fast match
+- **Структура**: Отдельное уведомление для каждого мэтча
+- **Управление**: Создается при создании мэтча между пользователями
+- **Получатели**: Оба пользователя получают уведомления о мэтче
+
+### 5. Мэтчи (`match`)
+- **Описание**: Уведомления о новых мэтчах
+- **Структура**: Отдельное уведомление для каждого мэтча
+- **Управление**: Создается при создании мэтча
+
+## Основные методы
+
+### Общие методы
+- `getUserNotifications(userId)` - Получение всех уведомлений пользователя
+- `markAsRead(userId, notificationId)` - Отметка уведомления как прочитанного
+- `deleteNotification(userId, notificationId)` - Удаление уведомления
+- `sendNotification(targetUserId, type, title, body, data)` - Отправка общего уведомления
+
+### Лайки
+- `sendLikeNotification(targetUserId)` - Отправка/увеличение счетчика лайков
+- `decrementLikeCounter(userId)` - Уменьшение счетчика лайков
+
+### One Night
+- `sendOneNightNotification(targetUserId)` - Отправка/увеличение счетчика one night
+- `decrementOneNightCounter(userId)` - Уменьшение счетчика one night
+
+### Fast Match
+- `sendFastMatchNotification(targetUserId, senderData, requestId)` - Отправка уведомления о fast match
+- `scheduleFastMatchNotificationDeletion(userId, notificationId, delayMs)` - Планирование автоматического удаления
+- `deleteFastMatchNotificationByRequestId(userId, requestId)` - Удаление по ID запроса
+
+### Мэтчи
+- `sendMatchNotification(targetUserId, matchData)` - Отправка уведомления о мэтче
+
+## Интеграция с контроллерами
+
+### Лайки
+```javascript
+// При лайке
+await notificationService.sendLikeNotification(targetUserId);
+
+// При отмене лайка
+await notificationService.decrementLikeCounter(targetUserId);
 ```
-/notifications/{userId}
+
+### One Night
+```javascript
+// При создании приглашения
+await notificationService.sendOneNightNotification(userId2);
+
+// При ответе на приглашение
+await notificationService.decrementOneNightCounter(userId2);
+
+// При отмене приглашения
+await notificationService.decrementOneNightCounter(userId2);
+```
+
+### Fast Match
+```javascript
+// При создании приглашения
+const senderData = {
+  userId: sender.userId,
+  name: sender.name,
+  photoUrl: sender.photos[0]
+};
+await notificationService.sendFastMatchNotification(user_second, senderData, fastMatch._id.toString());
+
+// При ответе на приглашение
+await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
+
+// При отмене приглашения
+await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
+```
+
+### Мэтчи
+```javascript
+// При создании мэтча
+const matchData = {
+  userId: otherUser.userId,
+  name: otherUser.name,
+  photoUrl: otherUser.photos[0]
+};
+await notificationService.sendMatchNotification(targetUserId, matchData);
+```
+
+## Структура данных
+
+### Firebase Realtime Database
+```
+/notifications/{userId}/{notificationId}
+```
+
+### Общая структура уведомления
+```json
 {
-  "type": "like_counter" | "match" | "message",
-  "title": "Новый лайк!" | "Новый мэтч!" | "Новое сообщение",
-  "body": "Кто-то поставил вам лайк",
+  "type": "notification_type",
+  "title": "Заголовок уведомления",
+  "body": "Текст уведомления",
   "data": {
-    "likeCount": 1, // для like_counter
-    "userId": "user123", // для match/message
-    "name": "Имя пользователя",
-    "photoUrl": "https://...",
-    "timestamp": 1234567890
+    // Специфичные данные для типа уведомления
   },
-  "timestamp": 1234567890,
+  "timestamp": 1640995200000,
   "read": false
 }
 ```
 
-## API Methods
+## Оптимизация производительности
 
-### Отправка уведомления о лайке
-```javascript
-await notificationService.sendLikeNotification(targetUserId);
+### Fast Match уведомления
+- Использование `setTimeout` вместо cron jobs
+- Минимальная нагрузка на систему
+- Автоматическое удаление через 10 минут
+- Проверка существования перед удалением
+
+### Счетчики (Лайки, One Night)
+- Одно уведомление на пользователя
+- Увеличение/уменьшение счетчика
+- Автоматическое удаление при счетчике = 0
+
+### Обработка ошибок
+- Graceful handling всех ошибок
+- Логирование ошибок без блокировки основного функционала
+- Продолжение работы приложения даже при сбоях уведомлений
+
+## Тестирование
+
+### Тестовые файлы
+- `tests/test-one-night-notification.js` - Тестирование one night уведомлений
+- `tests/test-fast-match-notification.js` - Тестирование fast match приглашений
+- `tests/test-fast-match-match-notification.js` - Тестирование уведомлений о мэтчах в fast match
+
+### Запуск тестов
+```bash
+node tests/test-one-night-notification.js
+node tests/test-fast-match-notification.js
+node tests/test-fast-match-match-notification.js
 ```
 
-### Отправка уведомления о мэтче
+## Документация
+
+- `one-night-notifications.md` - Подробная документация по one night уведомлениям
+- `fast-match-notifications.md` - Подробная документация по fast match уведомлениям
+
+## Конфигурация
+
+### Firebase URL
+Устанавливается в конструкторе `NotificationService`:
 ```javascript
-await notificationService.sendMatchNotification(targetUserId, {
-  userId: 'user123',
-  name: 'Имя пользователя',
-  photoUrl: 'https://...'
-});
+this.firebaseUrl = 'https://willowe-139e2-default-rtdb.europe-west1.firebasedatabase.app';
 ```
 
-### Отправка общего уведомления
-```javascript
-await notificationService.sendNotification(
-  targetUserId,
-  'custom_type',
-  'Заголовок',
-  'Текст уведомления',
-  { customData: 'value' }
-);
-```
+### Временные настройки
+- Fast Match: 10 минут (600,000 мс)
+- Автоматическое удаление: планируется при создании уведомления
 
-### Получение уведомлений пользователя
-```javascript
-const notifications = await notificationService.getUserNotifications(userId);
-```
+## Мониторинг
 
-### Отметка как прочитанное
-```javascript
-await notificationService.markAsRead(userId, notificationId);
-```
+### Логирование
+Все операции логируются в консоль:
+- Создание уведомлений
+- Удаление уведомлений
+- Ошибки операций
+- Автоматические действия
 
-### Удаление уведомления
-```javascript
-await notificationService.deleteNotification(userId, notificationId);
-```
-
-## Cloud Function для подсчета лайков
-
-Для автоматического подсчета лайков нужно создать Cloud Function в Firebase:
-
-```javascript
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp();
-
-exports.aggregateLikeCounter = functions.database
-  .ref('/notifications/{userId}/{notificationId}')
-  .onCreate(async (snapshot, context) => {
-    const { userId, notificationId } = context.params;
-    const newNotification = snapshot.val();
-
-    if (!newNotification || newNotification.type !== 'like_counter') {
-      return null;
-    }
-
-    const notificationsRef = admin.database().ref(`/notifications/${userId}`);
-    const notificationsSnap = await notificationsRef.once('value');
-    const notifications = notificationsSnap.val();
-
-    let lastLikeKey = null;
-    let lastLikeTimestamp = 0;
-
-    // Ищем последнее уведомление типа like_counter
-    for (const [key, notif] of Object.entries(notifications || {})) {
-      if (
-        key !== notificationId &&
-        notif.type === 'like_counter' &&
-        notif.timestamp > lastLikeTimestamp
-      ) {
-        lastLikeTimestamp = notif.timestamp;
-        lastLikeKey = key;
-      }
-    }
-
-    if (lastLikeKey) {
-      const lastLikeNotif = notifications[lastLikeKey];
-      const prevCount = lastLikeNotif.data?.likeCount || 1;
-
-      // Обновляем новый notification
-      await notificationsRef.child(notificationId).update({
-        'data/likeCount': prevCount + 1,
-        title: prevCount + 1 === 1 ? 'Новый лайк!' : 'Новые лайки!',
-        body: prevCount + 1 === 1 ? 'Кто-то поставил вам лайк' : `${prevCount + 1} человек поставили вам лайк`
-      });
-
-      // Удаляем старое уведомление
-      await notificationsRef.child(lastLikeKey).remove();
-    }
-
-    return null;
-  });
-```
-
-## Интеграция в контроллере
-
-В `match.controller.js`:
-
-```javascript
-// При лайке (если нет мэтча)
-notificationService.sendLikeNotification(targetUserId)
-  .catch(error => {
-    console.error('Ошибка отправки уведомления о лайке:', error);
-  });
-
-// При мэтче
-notificationService.sendMatchNotification(otherUserId, {
-  userId: currentUser.userId,
-  name: currentUser.name,
-  photoUrl: currentUserPhotoUrl
-});
-```
-
-## Преимущества новой архитектуры
-
-- ✅ **Простота**: Сервер только отправляет уведомления
-- ✅ **Производительность**: Подсчет происходит в Firebase
-- ✅ **Масштабируемость**: Cloud Functions автоматически масштабируются
-- ✅ **Консистентность**: Всегда актуальный счетчик
-- ✅ **Реальное время**: Мгновенные обновления
-
-## Автоматическая очистка
-
-Уведомления автоматически удаляются через 30 дней после последнего обновления благодаря TTL индексу в MongoDB.
-
-## Логирование
-
-Все операции логируются в консоль для отладки и мониторинга. 
+### Отладка
+Для отладки можно использовать тестовые файлы или проверить Firebase Realtime Database напрямую. 

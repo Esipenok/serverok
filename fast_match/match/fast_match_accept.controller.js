@@ -163,6 +163,42 @@ exports.acceptFastMatch = async (req, res) => {
       await FastMatch.deleteOne({ _id: fastMatch._id });
       console.log(`Удалена запись fast_match между ${actualUserFirst} и ${actualUserSecond}`);
       
+      // Отправляем уведомления о мэтче обоим пользователям
+      try {
+        // Получаем информацию о пользователях для уведомлений
+        const [user1Info, user2Info] = await Promise.all([
+          User.findOne({ userId: actualUserFirst }).select('userId name photos'),
+          User.findOne({ userId: actualUserSecond }).select('userId name photos')
+        ]);
+        
+        if (user1Info && user2Info) {
+          // Данные для уведомления пользователю 2
+          const user1Data = {
+            userId: user1Info.userId,
+            name: user1Info.name || 'Пользователь',
+            photoUrl: user1Info.photos && user1Info.photos.length > 0 ? user1Info.photos[0] : null
+          };
+          
+          // Данные для уведомления пользователю 1
+          const user2Data = {
+            userId: user2Info.userId,
+            name: user2Info.name || 'Пользователь',
+            photoUrl: user2Info.photos && user2Info.photos.length > 0 ? user2Info.photos[0] : null
+          };
+          
+          // Отправляем уведомления о мэтче
+          await Promise.all([
+            notificationService.sendMatchNotification(actualUserSecond, user1Data),
+            notificationService.sendMatchNotification(actualUserFirst, user2Data)
+          ]);
+          
+          console.log(`Уведомления о fast match мэтче отправлены пользователям ${actualUserFirst} и ${actualUserSecond}`);
+        }
+      } catch (notificationError) {
+        console.error('Ошибка отправки уведомлений о мэтче:', notificationError);
+        // Продолжаем выполнение даже при ошибке уведомлений
+      }
+      
       // Удаляем запись матча из базы данных после успешного создания быстрого мэтча
       // так как все данные уже обработаны и переданы клиенту
       try {

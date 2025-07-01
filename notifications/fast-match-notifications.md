@@ -2,12 +2,21 @@
 
 ## Обзор
 
-Система уведомлений для приглашений на быстрые встречи (fast match) создает отдельное уведомление для каждого приглашения и автоматически удаляет его через 10 минут, если пользователь не ответил.
+Система уведомлений для приглашений на быстрые встречи (fast match) создает отдельное уведомление для каждого приглашения и автоматически удаляет его через 10 минут, если пользователь не ответил. При создании мэтча отправляются уведомления о мэтче обоим пользователям.
 
-## Тип уведомления
+## Типы уведомлений
 
-- **Тип**: `fast_match`
+### 1. Fast Match приглашения (`fast_match`)
+- **Описание**: Отдельные уведомления для каждого приглашения на быструю встречу
+- **Структура**: Отдельное уведомление для каждого приглашения
 - **Время жизни**: 10 минут (автоматическое удаление)
+- **Управление**: Создается при приглашении, удаляется при ответе или истечении времени
+
+### 2. Fast Match мэтчи (`match`)
+- **Описание**: Уведомления о новых мэтчах в fast match
+- **Структура**: Отдельное уведомление для каждого мэтча
+- **Управление**: Создается при создании мэтча между пользователями
+- **Получатели**: Оба пользователя получают уведомления о мэтче
 
 ## Методы API
 
@@ -73,6 +82,17 @@ await notificationService.sendFastMatchNotification('targetUser456', senderData,
 await notificationService.deleteFastMatchNotificationByRequestId('user456', 'request789');
 ```
 
+### 4. sendMatchNotification(targetUserId, matchData)
+
+Отправляет уведомление о мэтче (используется для fast match мэтчей).
+
+**Параметры:**
+- `targetUserId` (string) - ID пользователя, которому отправляется уведомление
+- `matchData` (object) - Данные о мэтче:
+  - `userId` (string) - ID пользователя, с которым произошел мэтч
+  - `name` (string) - Имя пользователя
+  - `photoUrl` (string) - URL фото пользователя
+
 ## Интеграция с Fast Match контроллером
 
 ### Создание приглашения (`createFastMatch`)
@@ -97,6 +117,33 @@ if (sender) {
 ```javascript
 // При любом ответе на приглашение (принятие или отказ)
 await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
+
+// При создании мэтча отправляем уведомления о мэтче обоим пользователям
+if (isNewMatch) {
+  const [user1Info, user2Info] = await Promise.all([
+    User.findOne({ userId: actualUserFirst }).select('userId name photos'),
+    User.findOne({ userId: actualUserSecond }).select('userId name photos')
+  ]);
+  
+  if (user1Info && user2Info) {
+    const user1Data = {
+      userId: user1Info.userId,
+      name: user1Info.name || 'Пользователь',
+      photoUrl: user1Info.photos && user1Info.photos.length > 0 ? user1Info.photos[0] : null
+    };
+    
+    const user2Data = {
+      userId: user2Info.userId,
+      name: user2Info.name || 'Пользователь',
+      photoUrl: user2Info.photos && user2Info.photos.length > 0 ? user2Info.photos[0] : null
+    };
+    
+    await Promise.all([
+      notificationService.sendMatchNotification(actualUserSecond, user1Data),
+      notificationService.sendMatchNotification(actualUserFirst, user2Data)
+    ]);
+  }
+}
 ```
 
 ### Отмена приглашения (`deleteFastMatch`)
@@ -106,8 +153,9 @@ await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_
 await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_second, fastMatch._id.toString());
 ```
 
-## Структура уведомления
+## Структура уведомлений
 
+### Fast Match приглашение
 ```json
 {
   "type": "fast_match",
@@ -126,43 +174,65 @@ await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_
 }
 ```
 
+### Fast Match мэтч
+```json
+{
+  "type": "match",
+  "title": "Новый мэтч!",
+  "body": "Анна понравился вам!",
+  "data": {
+    "userId": "user123",
+    "name": "Анна",
+    "photoUrl": "https://example.com/photo.jpg",
+    "timestamp": 1640995200000
+  },
+  "timestamp": 1640995200000,
+  "read": false
+}
+```
+
 ## Сценарии использования
 
 ### 1. Новое приглашение
 - Пользователь 1 приглашает пользователя 2 на быструю встречу
-- Система создает уведомление для пользователя 2
+- Система создает уведомление типа `fast_match` для пользователя 2
 - Планируется автоматическое удаление через 10 минут
 
-### 2. Принятие приглашения
+### 2. Принятие приглашения (создание мэтча)
 - Пользователь 2 принимает приглашение
-- Система немедленно удаляет уведомление
-- Создается матч между пользователями
+- Система удаляет уведомление типа `fast_match`
+- Создается мэтч между пользователями
+- Оба пользователя получают уведомления типа `match`
 
 ### 3. Отказ от приглашения
 - Пользователь 2 отказывается от приглашения
-- Система немедленно удаляет уведомление
+- Система удаляет уведомление типа `fast_match`
 - Пользователи добавляются в excludedUsers
+- Уведомления о мэтче НЕ отправляются
 
 ### 4. Отмена приглашения
 - Пользователь 1 отменяет приглашение
-- Система немедленно удаляет уведомление
+- Система удаляет уведомление типа `fast_match`
 - Пользователи НЕ добавляются в excludedUsers
+- Уведомления о мэтче НЕ отправляются
 
 ### 5. Автоматическое истечение
 - Проходит 10 минут без ответа
-- Система автоматически удаляет уведомление
+- Система автоматически удаляет уведомление типа `fast_match`
 - Запись fast match также удаляется из базы данных
+- Уведомления о мэтче НЕ отправляются
 
 ## Оптимизация производительности
 
-### Использование setTimeout вместо cron
+### Fast Match уведомления
+- Использование `setTimeout` вместо cron jobs
 - Минимальная нагрузка на систему
-- Каждое уведомление планирует свое собственное удаление
-- Нет необходимости в фоновых процессах
+- Автоматическое удаление через 10 минут
+- Проверка существования перед удалением
 
-### Проверка существования перед удалением
-- Система проверяет, существует ли уведомление перед удалением
-- Избегает ошибок при повторном удалении
+### Уведомления о мэтчах
+- Отправка уведомлений обоим пользователям одновременно
+- Использование `Promise.all` для параллельной отправки
 - Graceful handling ошибок
 
 ### Обработка ошибок
@@ -172,10 +242,14 @@ await notificationService.deleteFastMatchNotificationByRequestId(fastMatch.user_
 
 ## Тестирование
 
-Для тестирования системы используйте файл `tests/test-fast-match-notification.js`:
+### Тестовые файлы
+- `tests/test-fast-match-notification.js` - Тестирование fast match приглашений
+- `tests/test-fast-match-match-notification.js` - Тестирование уведомлений о мэтчах
 
+### Запуск тестов
 ```bash
 node tests/test-fast-match-notification.js
+node tests/test-fast-match-match-notification.js
 ```
 
 ## Firebase структура
@@ -192,5 +266,5 @@ node tests/test-fast-match-notification.js
 ## Временные метки
 
 - `timestamp` - время создания уведомления
-- `expiresAt` - время истечения (timestamp + 10 минут)
-- Автоматическое удаление происходит через 10 минут после создания 
+- `expiresAt` - время истечения (только для fast_match, timestamp + 10 минут)
+- Автоматическое удаление происходит через 10 минут после создания (только для fast_match) 

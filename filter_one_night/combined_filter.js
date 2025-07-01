@@ -29,12 +29,17 @@ async function filterUsers(userId, filters = {}) {
         // Добавляем фильтр по возрасту
         if (filters.ageMin && filters.ageMax) {
             query.$and.push({
-                $expr: {
-                    $and: [
-                        { $gte: [{ $subtract: [new Date(), { $toDate: '$birthday' }] }, filters.ageMin * 365 * 24 * 60 * 60 * 1000] },
-                        { $lte: [{ $subtract: [new Date(), { $toDate: '$birthday' }] }, filters.ageMax * 365 * 24 * 60 * 60 * 1000] }
-                    ]
-                }
+                $and: [
+                    { birthday: { $exists: true, $ne: null, $ne: '' } }, // Проверяем, что birthday существует и не пустое
+                    {
+                        $expr: {
+                            $and: [
+                                { $gte: [{ $subtract: [new Date(), { $toDate: '$birthday' }] }, filters.ageMin * 365 * 24 * 60 * 60 * 1000] },
+                                { $lte: [{ $subtract: [new Date(), { $toDate: '$birthday' }] }, filters.ageMax * 365 * 24 * 60 * 60 * 1000] }
+                            ]
+                        }
+                    }
+                ]
             });
         }
 
@@ -94,7 +99,27 @@ async function filterUsers(userId, filters = {}) {
         const filteredUsers = await User.find(query).select('name birthday about photos userId');
         console.log(`Найдено ${filteredUsers.length} пользователей после фильтрации`);
 
-        return filteredUsers;
+        // Дополнительная фильтрация на уровне приложения для пользователей с невалидными датами
+        const validUsers = filteredUsers.filter(user => {
+            if (!user.birthday || user.birthday === '') {
+                console.log(`Пропускаем пользователя ${user.userId} с пустой датой рождения`);
+                return false;
+            }
+            try {
+                const birthDate = new Date(user.birthday);
+                if (isNaN(birthDate.getTime())) {
+                    console.log(`Пропускаем пользователя ${user.userId} с невалидной датой рождения: ${user.birthday}`);
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.log(`Пропускаем пользователя ${user.userId} с ошибкой парсинга даты: ${user.birthday}`);
+                return false;
+            }
+        });
+
+        console.log(`После дополнительной фильтрации осталось ${validUsers.length} пользователей`);
+        return validUsers;
     } catch (error) {
         console.error('Error in combined filter:', error);
         throw error;
