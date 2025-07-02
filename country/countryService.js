@@ -1,5 +1,6 @@
 const NodeGeocoder = require('node-geocoder');
 const nodeFetch = require('node-fetch');
+const { kafkaModuleService } = require('../kafka/init');
 
 // Кеш для хранения результатов геокодирования
 const countryCache = new Map();
@@ -69,6 +70,30 @@ async function getCountryFromCoordinates(latitude, longitude) {
       
       // Сохраняем в кеш
       countryCache.set(cacheKey, country);
+      
+      // Отправляем асинхронные операции в Kafka
+      try {
+        // Асинхронная аналитика определения страны
+        await kafkaModuleService.sendCountryOperation('analytics', {
+          latitude: latitude,
+          longitude: longitude,
+          country: country,
+          action: 'geocode_success',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Асинхронное обновление кэша
+        await kafkaModuleService.sendCountryOperation('cache_update', {
+          cacheKey: cacheKey,
+          country: country,
+          coordinates: { latitude, longitude },
+          timestamp: Date.now()
+        });
+        
+      } catch (error) {
+        console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+        // Не прерываем основной поток, так как страна уже определена
+      }
       
       return country;
     }

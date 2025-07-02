@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
 const notificationService = require('../../notifications/notification.service');
+const { kafkaModuleService } = require('../../kafka/init');
 
 // Создание записи в базе данных fast_match
 exports.createFastMatch = async (req, res) => {
@@ -76,6 +77,30 @@ exports.createFastMatch = async (req, res) => {
     } catch (notificationError) {
       console.error('Ошибка отправки уведомления:', notificationError);
       // Продолжаем выполнение даже при ошибке уведомления
+    }
+    
+    // Отправляем асинхронные операции в Kafka
+    try {
+      // Асинхронная аналитика создания fast match
+      await kafkaModuleService.sendFastMatchOperation('analytics', {
+        userFirst: user_first,
+        userSecond: user_second,
+        action: 'create',
+        timestamp: new Date().toISOString(),
+        expiresAt: expireDate.toISOString()
+      });
+      
+      // Асинхронное обновление кэша
+      await kafkaModuleService.sendFastMatchOperation('cache_update', {
+        userFirst: user_first,
+        userSecond: user_second,
+        cacheKey: `fast_match_${user_first}_${user_second}`,
+        cacheData: { status: 'pending', expiresAt: expireDate.toISOString() }
+      });
+      
+    } catch (error) {
+      console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+      // Не прерываем основной поток, так как fast match уже создан
     }
     
     return res.status(200).json({

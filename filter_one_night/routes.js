@@ -6,6 +6,7 @@ const { filterUsers } = require('./combined_filter');
 const User = require('../auth/models/User');
 const mongoose = require('mongoose');
 const { filterByBlockedUsers } = require('./blocked_users_filter');
+const { kafkaModuleService } = require('../kafka/init');
 
 // Импортируем модели из правильных путей
 const Match = require('../matches/models/match.model');
@@ -51,6 +52,7 @@ router.get('/gender/:userId', async (req, res) => {
 // Маршрут для получения пользователей, отфильтрованных по всем критериям
 router.get('/:userId', async (req, res) => {
     try {
+        const startTime = Date.now();
         const { userId } = req.params;
         console.log('Начало фильтрации для пользователя:', userId);
         
@@ -71,6 +73,30 @@ router.get('/:userId', async (req, res) => {
         };
         
         const filteredUsers = await filterUsers(userId, filters);
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная аналитика фильтрации
+          await kafkaModuleService.sendFilterOperation('analytics', {
+            userId: userId,
+            filterType: 'one_night',
+            searchCriteria: filters,
+            resultCount: filteredUsers.length,
+            searchTime: Date.now() - startTime
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendFilterOperation('cache_update', {
+            userId: userId,
+            filterType: 'one_night',
+            cacheKey: `one_night_${userId}_${JSON.stringify(filters)}`,
+            cacheData: { users: filteredUsers.length, timestamp: Date.now() }
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как фильтрация уже выполнена
+        }
         
         res.json({
             status: 'success',
@@ -180,6 +206,30 @@ router.post('/request', async (req, res) => {
             // Сохраняем обновленный матч
             await matchDoc.save();
             console.log('Updated match document');
+        }
+
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная аналитика one night запроса
+          await kafkaModuleService.sendFilterOperation('analytics', {
+            userId: userId,
+            filterType: 'one_night_request',
+            targetUserId: targetUserId,
+            action: 'request_sent',
+            timestamp: new Date().toISOString()
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendFilterOperation('cache_update', {
+            userId: userId,
+            filterType: 'one_night_cache',
+            cacheKey: `one_night_${userId}_${targetUserId}`,
+            cacheData: { status: 'requested', timestamp: Date.now() }
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как запрос уже отправлен
         }
 
         // Отправляем ответ

@@ -4,6 +4,7 @@ const { filterUsersByAge } = require('./age_filter');
 const { filterUsersByGender } = require('./gender_filter');
 const { filterUsersByDistance } = require('./location_filter');
 const { filterUsers } = require('./combined_filter');
+const { kafkaModuleService } = require('../kafka/init');
 
 // Маршрут для получения отфильтрованных по возрасту пользователей
 router.get('/age/:userId', async (req, res) => {
@@ -65,8 +66,33 @@ router.get('/distance/:userId', async (req, res) => {
 // Маршрут для получения пользователей, отфильтрованных по всем критериям
 router.get('/:userId', async (req, res) => {
     try {
+        const startTime = Date.now();
         const { userId } = req.params;
         const filteredUsers = await filterUsers(userId);
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная аналитика фильтрации
+          await kafkaModuleService.sendFilterOperation('analytics', {
+            userId: userId,
+            filterType: 'finder',
+            searchCriteria: req.query,
+            resultCount: filteredUsers.length,
+            searchTime: Date.now() - startTime
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendFilterOperation('cache_update', {
+            userId: userId,
+            filterType: 'finder',
+            cacheKey: `finder_${userId}_${JSON.stringify(req.query)}`,
+            cacheData: { users: filteredUsers.length, timestamp: Date.now() }
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как фильтрация уже выполнена
+        }
         
         res.json({
             status: 'success',

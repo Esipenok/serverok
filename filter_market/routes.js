@@ -4,6 +4,7 @@ const { filterMarketCardsByAge } = require('./age_filter');
 const { filterMarketCardsByGender } = require('./gender_filter');
 const { filterMarketCardsByDistance } = require('./location_filter');
 const { filterMarketCards } = require('./combined_filter');
+const { kafkaModuleService } = require('../kafka/init');
 
 // Маршрут для получения отфильтрованных по возрасту маркетных карточек
 router.get('/age/:userId', async (req, res) => {
@@ -65,8 +66,33 @@ router.get('/distance/:userId', async (req, res) => {
 // Маршрут для получения маркетных карточек, отфильтрованных по всем критериям
 router.get('/:userId', async (req, res) => {
     try {
+        const startTime = Date.now();
         const { userId } = req.params;
         const filteredMarketCards = await filterMarketCards(userId);
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная аналитика фильтрации
+          await kafkaModuleService.sendFilterOperation('analytics', {
+            userId: userId,
+            filterType: 'market',
+            searchCriteria: req.query,
+            resultCount: filteredMarketCards.length,
+            searchTime: Date.now() - startTime
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendFilterOperation('cache_update', {
+            userId: userId,
+            filterType: 'market',
+            cacheKey: `market_${userId}_${JSON.stringify(req.query)}`,
+            cacheData: { cards: filteredMarketCards.length, timestamp: Date.now() }
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как фильтрация уже выполнена
+        }
         
         res.json({
             status: 'success',

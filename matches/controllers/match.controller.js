@@ -5,6 +5,21 @@ const { ObjectId } = mongoose.Types;
 const { toObjectId, validateId } = require('../utils/id-converter');
 const { getFullPhotoUrl, formatUserWithPhotos } = require('../../users/photos/photo.utils');
 const notificationService = require('../../notifications/notification.service');
+const { kafkaModuleService } = require('../../kafka/init');
+
+// Функция для расчета возраста
+function calculateAge(birthday) {
+  const today = new Date();
+  const birthDate = new Date(birthday);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+}
 
 // Like a user
 exports.likeUser = async (req, res) => {
@@ -122,11 +137,39 @@ exports.likeUser = async (req, res) => {
         photoUrl: currentUserPhotoUrl
       };
       
-      // Отправляем уведомление о мэтче асинхронно
-      notificationService.sendMatchNotification(otherUserId, notificationData)
-        .catch(error => {
-          console.error('Ошибка отправки уведомления о мэтче:', error);
-        });
+              // Отправляем уведомление о мэтче асинхронно
+        notificationService.sendMatchNotification(otherUserId, notificationData)
+          .catch(error => {
+            console.error('Ошибка отправки уведомления о мэтче:', error);
+          });
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная отправка уведомления
+          await kafkaModuleService.sendMatchOperation('notification_send', {
+            targetUserId: otherUserId,
+            senderData: notificationData
+          });
+          
+          // Асинхронная аналитика
+          await kafkaModuleService.sendMatchOperation('analytics_track', {
+            user1Id: userId,
+            user2Id: otherUserId,
+            matchId: matchRecord._id.toString(),
+            timestamp: new Date().toISOString()
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendMatchOperation('cache_update', {
+            userId: userId,
+            matchId: matchRecord._id.toString(),
+            operation: 'create'
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как мэтч уже создан
+        }
       
       // При создании мэтча всегда уменьшаем счетчик лайков у userId (того, кто ответил взаимно)
       await notificationService.decrementLikeCounter(userId)

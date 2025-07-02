@@ -1,6 +1,7 @@
 const OneNight = require('../models/one_night.model');
 const User = require('../../auth/models/User');
 const notificationService = require('../../notifications/notification.service');
+const { kafkaModuleService } = require('../../kafka/init');
 
 // Создание нового приглашения
 exports.createInvitation = async (req, res) => {
@@ -36,6 +37,29 @@ exports.createInvitation = async (req, res) => {
         } catch (notificationError) {
             console.error('Ошибка отправки уведомления:', notificationError);
             // Продолжаем выполнение даже при ошибке уведомления
+        }
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная аналитика создания one night приглашения
+          await kafkaModuleService.sendOneNightOperation('analytics', {
+            userId1: userId1,
+            userId2: userId2,
+            action: 'create_invitation',
+            timestamp: new Date().toISOString()
+          });
+          
+          // Асинхронное обновление кэша
+          await kafkaModuleService.sendOneNightOperation('cache_update', {
+            userId1: userId1,
+            userId2: userId2,
+            cacheKey: `one_night_${userId1}_${userId2}`,
+            cacheData: { status: 'pending', timestamp: Date.now() }
+          });
+          
+        } catch (error) {
+          console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как приглашение уже создано
         }
 
         res.status(201).json({ message: 'Приглашение создано', invitation });

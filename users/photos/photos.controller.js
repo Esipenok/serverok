@@ -3,11 +3,13 @@ const path = require('path');
 const PhotosService = require('./photos.service');
 const { formatUserWithPhotos } = require('./photo.utils');
 const logger = require('../../config/logger.config');
+const { kafkaModuleService } = require('../../kafka/init');
 
 class PhotosController {
   // Загрузка фотографий
   static async uploadPhotos(req, res) {
     try {
+      const startTime = Date.now();
       const { userId } = req.params;
       const files = req.files;
       
@@ -37,10 +39,41 @@ class PhotosController {
       
       logger.info(`Начинаем загрузку ${files.length} фотографий для пользователя ${userId}`);
       
-      // Сохраняем фотографии с помощью сервиса
-      const updatedPhotos = await PhotosService.savePhotos(userId, files);
-      
-      logger.info(`Успешно загружены и конвертированы ${files.length} фотографий для пользователя ${userId}`);
+              // Сохраняем фотографии с помощью сервиса
+        const updatedPhotos = await PhotosService.savePhotos(userId, files);
+        
+        // Отправляем асинхронные операции в Kafka
+        try {
+          // Асинхронная оптимизация фото
+          await kafkaModuleService.sendPhotoOperation('optimize', {
+            userId: userId,
+            photoId: updatedPhotos[0]?.id || 'unknown',
+            originalSize: files[0]?.size || 0,
+            targetSize: Math.floor((files[0]?.size || 0) * 0.8) // 20% сжатие
+          });
+          
+          // Асинхронная аналитика
+          await kafkaModuleService.sendPhotoOperation('analytics', {
+            userId: userId,
+            photoId: updatedPhotos[0]?.id || 'unknown',
+            fileSize: files[0]?.size || 0,
+            uploadTime: new Date().toISOString(),
+            processingTime: Date.now() - startTime
+          });
+          
+          // Асинхронная очистка временных файлов
+          await kafkaModuleService.sendPhotoOperation('cleanup', {
+            userId: userId,
+            photoId: updatedPhotos[0]?.id || 'unknown',
+            cleanupType: 'temp_files'
+          });
+          
+        } catch (error) {
+          logger.error('Ошибка отправки асинхронных операций в Kafka:', error);
+          // Не прерываем основной поток, так как фото уже загружены
+        }
+        
+        logger.info(`Успешно загружены и конвертированы ${files.length} фотографий для пользователя ${userId}`);
       
       res.status(200).json({ 
         message: 'Фотографии успешно загружены и оптимизированы',

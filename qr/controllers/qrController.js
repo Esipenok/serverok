@@ -2,6 +2,7 @@ const QrCode = require('../models/QrCode');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const fs = require('fs');
+const { kafkaModuleService } = require('../../kafka/init');
 
 /**
  * Получить URL для получения данных QR-кода
@@ -128,6 +129,30 @@ exports.createPermanentQr = async (req, res) => {
 
     await newQrCode.save();
     console.log(`Создан новый постоянный QR код: ${newQrCode.qr_id}`);
+    
+    // Отправляем асинхронные операции в Kafka
+    try {
+      // Асинхронная аналитика создания QR кода
+      await kafkaModuleService.sendQrOperation('analytics', {
+        qrId: newQrCode.qr_id,
+        userId: userId,
+        action: 'create_permanent',
+        timestamp: new Date().toISOString(),
+        message: message || ''
+      });
+      
+      // Асинхронное обновление кэша
+      await kafkaModuleService.sendQrOperation('cache_update', {
+        qrId: newQrCode.qr_id,
+        userId: userId,
+        cacheKey: `qr_permanent_${userId}`,
+        cacheData: { qrId: newQrCode.qr_id, timestamp: Date.now() }
+      });
+      
+    } catch (error) {
+      console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+      // Не прерываем основной поток, так как QR код уже создан
+    }
     
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     return res.status(201).json({

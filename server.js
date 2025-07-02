@@ -20,6 +20,9 @@ const connectDB = require('./config/db.config');
 const appConfig = require('./config/app.config');
 const logger = require('./config/logger.config');
 
+// Импорт Kafka сервиса
+const { initializeKafka } = require('./kafka/init');
+
 // Импорт моделей
 const { Counter, initCounter } = require('./auth/counters/models/Counter');
 const { initMarketCounter } = require('./marketprofiles/models/MarketCounter');
@@ -31,6 +34,20 @@ const { validateRegistration, validateLocation } = require('./auth/middleware/va
 
 // Подключение к базе данных
 connectDB();
+
+// Инициализация Kafka с модулями
+async function initializeKafkaService() {
+  try {
+    await initializeKafka();
+    logger.info('Kafka Module Service инициализирован');
+  } catch (error) {
+    logger.error('Ошибка инициализации Kafka Module Service:', error);
+    // Не завершаем процесс, так как приложение может работать без Kafka
+  }
+}
+
+// Инициализируем Kafka
+initializeKafkaService();
 
 // Обработчики событий подключения
 mongoose.connection.on('connected', () => {
@@ -254,6 +271,31 @@ process.on('uncaughtException', (err) => {
   logger.error(`Uncaught Exception: ${err.message}`);
   console.error(err.stack);
   process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM получен, начинаем graceful shutdown...');
+  try {
+    const { kafkaModuleService } = require('./kafka/init');
+    await kafkaModuleService.disconnect();
+    logger.info('Kafka Module Service отключен');
+  } catch (error) {
+    logger.error('Ошибка отключения Kafka Module Service:', error);
+  }
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT получен, начинаем graceful shutdown...');
+  try {
+    const { kafkaModuleService } = require('./kafka/init');
+    await kafkaModuleService.disconnect();
+    logger.info('Kafka Module Service отключен');
+  } catch (error) {
+    logger.error('Ошибка отключения Kafka Module Service:', error);
+  }
+  process.exit(0);
 });
 
 module.exports = app;

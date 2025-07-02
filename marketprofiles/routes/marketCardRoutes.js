@@ -9,6 +9,7 @@ const User = require('../../auth/models/User');
 const marketInitChatRoutes = require('../market_init_chat/market_init_chat.routes');
 const getAllMarketDataRoutes = require('../get_all_market_data/get_all_market_data.routes');
 const MarketPhotosService = require('../../users/photos/MarketPhotosService');
+const { kafkaModuleService } = require('../../kafka/init');
 
 // Подключаем маршруты инициализации чата
 router.use('/', marketInitChatRoutes);
@@ -167,6 +168,30 @@ router.post('/', async (req, res) => {
           console.log(`Карточка ${marketCardId} добавлена пользователю ${userId}`);
         }
       }
+    }
+    
+    // Отправляем асинхронные операции в Kafka
+    try {
+      // Асинхронная аналитика создания маркетной карточки
+      await kafkaModuleService.sendMarketProfileOperation('analytics', {
+        marketCardId: marketCardId,
+        userId: userId,
+        action: 'create',
+        timestamp: new Date().toISOString(),
+        gender: gender,
+        preference: preference
+      });
+      
+      // Асинхронное обновление кэша
+      await kafkaModuleService.sendMarketProfileOperation('cache_update', {
+        marketCardId: marketCardId,
+        cacheKey: `market_card_${marketCardId}`,
+        cacheData: { fullName, gender, preference, timestamp: Date.now() }
+      });
+      
+    } catch (error) {
+      console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+      // Не прерываем основной поток, так как карточка уже создана
     }
     
     res.status(201).json({

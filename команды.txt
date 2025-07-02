@@ -12,11 +12,55 @@ scp -i "C:\Users\Andrey\.ssh\id_ed25519" test-kafka.js root@46.62.131.90:/app/te
 4. Порядок действий
 Настроить и проверить nginx (reverse proxy) +
 Добавить Redis (docker-compose, интеграция с Node.js) +
-Добавить Kafka (docker-compose, интеграция с Node.js)
+Добавить Kafka (docker-compose, интеграция с Node.js) +
 Добавить Prometheus и Grafana (docker-compose)
 Настроить экспортеры для сбора метрик
 Создать дашборды в Grafana для мониторинга Redis, Kafka, Node.js, nginx
 Постепенно внедрять очереди и события в бизнес-логику приложения
+
+5. Команды для работы с Kafka
+
+# Запуск Kafka и Zookeeper
+./docs/start_kafka.bat
+
+# Настройка топиков (старая версия)
+node scripts/setup-kafka-topics.js
+
+# Настройка расширенных топиков для модулей
+node scripts/setup-advanced-kafka-topics.js
+
+# Мониторинг Kafka
+node scripts/kafka-monitor.js
+
+# Тест интеграции (старая версия)
+node tests/test-kafka-integration.js
+
+# Тест модулей Kafka (новая версия)
+node tests/test-kafka-modules.js
+
+# Проверка статуса контейнеров
+docker-compose -f docker-compose.zero-downtime.yml ps kafka zookeeper
+
+# Логи Kafka
+docker logs dating_app_kafka
+
+# Логи Zookeeper  
+docker logs dating_app_zookeeper
+
+# Подключение к Kafka контейнеру
+docker exec -it dating_app_kafka bash
+
+# Список топиков (внутри контейнера)
+kafka-topics.sh --list --bootstrap-server localhost:9092
+
+# Информация о топике
+kafka-topics.sh --describe --topic high-priority-notifications --bootstrap-server localhost:9092
+
+# Просмотр сообщений в топике
+kafka-console-consumer.sh --topic high-priority-notifications --from-beginning --bootstrap-server localhost:9092
+
+# Отправка тестового сообщения
+echo "test message" | kafka-console-producer.sh --topic test-topic --bootstrap-server localhost:9092
 
 Разобраться, какие папки заливаются 
 какие исключения 

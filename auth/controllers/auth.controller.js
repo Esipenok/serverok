@@ -3,6 +3,7 @@ const { AppError } = require('../middleware/error.middleware');
 const { Counter } = require('../counters/models/Counter');
 const { generateToken, generateRefreshToken, revokeToken } = require('../../security/jwt.utils');
 const bcrypt = require('bcryptjs');
+const { kafkaModuleService } = require('../../kafka/init');
 
 const register = async (req, res, next) => {
   try {
@@ -103,6 +104,29 @@ const register = async (req, res, next) => {
     // Сохраняем refresh токен в базе данных
     user.refreshToken = refreshToken;
     await user.save();
+    
+    // Отправляем асинхронные операции в Kafka
+    try {
+      // Асинхронная аналитика регистрации
+      await kafkaModuleService.sendAuthOperation('analytics', {
+        userId: user.userId,
+        email: user.email,
+        action: 'register',
+        timestamp: new Date().toISOString(),
+        clientIp: req.headers['x-forwarded-for'] || req.connection.remoteAddress
+      });
+      
+      // Асинхронное обновление кэша
+      await kafkaModuleService.sendAuthOperation('cache_update', {
+        userId: user.userId,
+        cacheKey: `user_${user.userId}`,
+        cacheData: { email: user.email, isProfileCompleted: user.isProfileCompleted }
+      });
+      
+    } catch (error) {
+      console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+      // Не прерываем основной поток, так как регистрация уже завершена
+    }
     
     res.status(201).json({
       status: 'success',

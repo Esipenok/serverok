@@ -27,7 +27,7 @@ services:
     networks:
       - app-network
 
-  # Zookeeper для Kafka (Bitnami)
+  # Zookeeper для Kafka (Bitnami) - оптимизированная конфигурация
   zookeeper:
     image: bitnami/zookeeper:3.8
     container_name: dating_app_zookeeper
@@ -36,10 +36,19 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOO_HEAP_SIZE=512
+      - ZOO_MAX_CLIENT_CNXNS=60
+    volumes:
+      - zookeeper_data:/bitnami/zookeeper
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "zkServer.sh", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Kafka брокер (Bitnami)
+  # Kafka брокер (Bitnami) - оптимизированная конфигурация для всех модулей
   kafka:
     image: bitnami/kafka:3.6
     container_name: dating_app_kafka
@@ -52,18 +61,56 @@ services:
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - ALLOW_PLAINTEXT_LISTENER=yes
+      # Оптимизация для высоких нагрузок
+      - KAFKA_CFG_NUM_NETWORK_THREADS=8
+      - KAFKA_CFG_NUM_IO_THREADS=8
+      - KAFKA_CFG_SOCKET_SEND_BUFFER_BYTES=102400
+      - KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES=102400
+      - KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES=104857600
+      - KAFKA_CFG_NUM_PARTITIONS=10
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_LOG_RETENTION_HOURS=168
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=1073741824
+      - KAFKA_CFG_LOG_RETENTION_CHECK_INTERVAL_MS=300000
+      # Настройки для разных типов топиков
+      - KAFKA_CFG_DELETE_TOPIC_ENABLE=true
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    volumes:
+      - kafka_data:/bitnami/kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Kafka Manager (опционально) для мониторинга
+  kafka-manager:
+    image: sheepkiller/kafka-manager:latest
+    container_name: dating_app_kafka_manager
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      ZK_HOSTS: zookeeper:2181
     depends_on:
       - zookeeper
+      - kafka
     networks:
       - app-network
 
-  # Node.js сервер (оптимизированный для zero-downtime)
+  # Node.js сервер (оптимизированный для zero-downtime с Kafka)
   app:
     image: node:18
     container_name: dating_app_server
     restart: unless-stopped
     working_dir: /app
-    command: bash -c "npm install --production && node server.js"
+    command: bash -c "npm install --production && node scripts/setup-kafka-topics.js && node kafka/init.js && node server.js"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -73,7 +120,22 @@ services:
       BASE_URL: https://willowe.love
       STATIC_URL: https://willowe.love
       REDIS_URL: redis://redis:6379
+      # Kafka конфигурация
       KAFKA_BROKER: kafka:9092
+      KAFKA_CLIENT_ID: dating_app_producer
+      KAFKA_GROUP_ID: dating_app_consumer
+      # Настройки для разных модулей
+      KAFKA_TOPIC_MATCHES: matches
+      KAFKA_TOPIC_PHOTOS: photos
+      KAFKA_TOPIC_FILTERS: filters
+      KAFKA_TOPIC_AUTH: auth
+      KAFKA_TOPIC_FAST_MATCH: fast_match
+      KAFKA_TOPIC_MARKET_PROFILES: marketprofiles
+      KAFKA_TOPIC_ONE_NIGHT: one_night
+      KAFKA_TOPIC_QR: qr
+      KAFKA_TOPIC_COMPLAIN: complain
+      KAFKA_TOPIC_COUNTRY: country
+      KAFKA_TOPIC_INVITES: invites
     ports:
       - "3000:3000"
     volumes:
@@ -85,9 +147,12 @@ services:
       - /app/shared/ssl:/app/ssl
       - /app/shared/.env:/app/.env
     depends_on:
-      - mongodb
-      - redis
-      - kafka
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - app-network
     healthcheck:
@@ -99,6 +164,10 @@ services:
 
 volumes:
   mongodb_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  kafka_data:
     driver: local
 
 networks:

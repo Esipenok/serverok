@@ -1,4 +1,5 @@
 const User = require('../auth/models/User');
+const { kafkaModuleService } = require('../kafka/init');
 
 // Получение количества приглашенных пользователей
 exports.getInvitesCount = async (req, res) => {
@@ -58,6 +59,28 @@ exports.processInvite = async (req, res) => {
     await inviter.save();
 
     console.log(`Увеличен счетчик инвайтов для пользователя ${inviterUserId}: ${inviter.invites}`);
+    
+    // Отправляем асинхронные операции в Kafka
+    try {
+      // Асинхронная аналитика обработки инвайта
+      await kafkaModuleService.sendInviteOperation('analytics', {
+        inviterUserId: inviterUserId,
+        action: 'process_invite',
+        invitesCount: inviter.invites,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Асинхронное обновление кэша
+      await kafkaModuleService.sendInviteOperation('cache_update', {
+        inviterUserId: inviterUserId,
+        cacheKey: `invites_${inviterUserId}`,
+        cacheData: { invitesCount: inviter.invites, timestamp: Date.now() }
+      });
+      
+    } catch (error) {
+      console.error('Ошибка отправки асинхронных операций в Kafka:', error);
+      // Не прерываем основной поток, так как инвайт уже обработан
+    }
 
     return res.status(200).json({
       success: true,
