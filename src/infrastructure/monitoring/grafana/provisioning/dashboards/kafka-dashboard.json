@@ -1,0 +1,88 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Kafka Monitoring",
+    "tags": ["kafka", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Kafka Messages Produced",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_topic_partition_current_offset[5m])",
+            "legendFormat": "{{topic}} - {{partition}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Kafka Consumer Lag",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kafka_consumer_group_lag",
+            "legendFormat": "{{topic}} - {{group}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Kafka Consumer Group Members",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kafka_consumer_group_members",
+            "legendFormat": "{{group}}"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Kafka Topic Partitions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kafka_topic_partition_count",
+            "legendFormat": "{{topic}}"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Kafka Broker Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kafka_brokers",
+            "legendFormat": "Brokers"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Kafka Messages Consumed",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kafka_consumer_group_messages_consumed_total[5m])",
+            "legendFormat": "{{group}} - {{topic}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+} 
