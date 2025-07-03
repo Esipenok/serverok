@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Willowe - Административная панель</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Боковое меню */
+        .sidebar {
+            width: 250px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .logo h2 {
+            color: #667eea;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #666;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            color: white;
+            border-left-color: #fff;
+            transform: translateX(5px);
+        }
+
+        .nav-link i {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Основной контент */
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* Карточки */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+            color: white;
+        }
+
+        .card-icon.cpu {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+
+        .card-icon.memory {
+            background: linear-gradient(45deg, #4834d4, #686de0);
+        }
+
+        .card-icon.disk {
+            background: linear-gradient(45deg, #00b894, #00cec9);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        /* Таблицы */
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .table-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Круговые диаграммы */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+
+        /* Жалобы */
+        .complaint-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .complaint-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .complaint-type {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .complaint-date {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .complaint-text {
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .complaint-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Загрузка */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Модальное окно входа */
+        .modal {
+            display: flex;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 0;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .modal-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .modal-body {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group label i {
+            margin-right: 8px;
+            color: #667eea;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-error {
+            background: #fee;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .form-error i {
+            margin-right: 8px;
+        }
+
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Информация о пользователе */
+        .user-info {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .username {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 5px 0;
+            transition: color 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            color: #667eea;
+        }
+
+        /* Секция статистики */
+        .stats-section {
+            margin-top: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .stats-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chart-container-large {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .chart-container-large:hover {
+            transform: translateY(-2px);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .chart-header h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .chart-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .stat-item strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Модальное окно входа -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-heart"></i> Willowe</h2>
+                <p>Административная панель</p>
+            </div>
+            <div class="modal-body">
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i> Логин
+                        </label>
+                        <input type="text" id="username" name="username" required placeholder="Введите логин">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Пароль
+                        </label>
+                        <input type="password" id="password" name="password" required placeholder="Введите пароль">
+                    </div>
+                    <div class="form-error" id="login-error" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="error-message">Неверный логин или пароль</span>
+                    </div>
+                    <button type="submit" class="login-btn">
+                        <i class="fas fa-sign-in-alt"></i> Войти
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" id="main-container" style="display: none;">
+        <!-- Боковое меню -->
+        <nav class="sidebar">
+            <div class="logo">
+                <h2><i class="fas fa-heart"></i> Willowe</h2>
+                <p>Админ панель</p>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-details">
+                    <span class="username" id="current-user">Администратор</span>
+                    <button class="logout-btn" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </button>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#status" class="nav-link active" data-tab="status">
+                        <i class="fas fa-server"></i>
+                        Статус сервера
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#complaints" class="nav-link" data-tab="complaints">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Жалобы
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Вкладка статуса сервера -->
+            <div id="status-tab" class="tab-content active">
+                <div class="header">
+                    <h1><i class="fas fa-server"></i> Статус сервера</h1>
+                    <p>Мониторинг системных ресурсов и Docker контейнеров</p>
+                </div>
+
+                <!-- Карточки с метриками -->
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon cpu">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Загрузка CPU</div>
+                                <div class="card-value" id="cpu-load">0%</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon memory">
+                                <i class="fas fa-memory"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Оперативная память</div>
+                                <div class="card-value" id="memory-usage">0%</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon disk">
+                                <i class="fas fa-hdd"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Дисковое пространство</div>
+                                <div class="card-value" id="disk-usage">0%</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="disk-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Круговые диаграммы -->
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <div class="chart-title">Использование CPU</div>
+                        <div class="chart-container">
+                            <canvas id="cpu-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Использование памяти</div>
+                        <div class="chart-container">
+                            <canvas id="memory-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-title">Использование диска</div>
+                        <div class="chart-container">
+                            <canvas id="disk-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Таблица Docker контейнеров -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Docker контейнеры</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="refresh-btn" onclick="testSSHConnection()" style="background: linear-gradient(45deg, #00b894, #00cec9);">
+                                <i class="fas fa-network-wired"></i> Тест SSH
+                            </button>
+                            <button class="refresh-btn" onclick="refreshServerStatus()">
+                                <i class="fas fa-sync-alt"></i> Обновить
+                            </button>
+                        </div>
+                    </div>
+                    <div id="docker-table-container">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Загрузка данных...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Графики статистики -->
+                <div class="stats-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-chart-line"></i> Статистика сервера (последний час)</h3>
+                        <div class="stats-controls">
+                            <button class="refresh-btn" onclick="refreshStats()">
+                                <i class="fas fa-sync-alt"></i> Обновить графики
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- График CPU -->
+                    <div class="chart-container-large">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-microchip"></i> Загрузка CPU (%)</h4>
+                            <div class="chart-stats" id="cpu-stats">
+                                <span class="stat-item">Текущая: <strong id="cpu-current">0</strong>%</span>
+                                <span class="stat-item">Средняя: <strong id="cpu-average">0</strong>%</span>
+                                <span class="stat-item">Максимум: <strong id="cpu-max">0</strong>%</span>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="cpu-trend-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- График памяти -->
+                    <div class="chart-container-large">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-memory"></i> Использование памяти (%)</h4>
+                            <div class="chart-stats" id="memory-stats">
+                                <span class="stat-item">Текущая: <strong id="memory-current">0</strong>%</span>
+                                <span class="stat-item">Средняя: <strong id="memory-average">0</strong>%</span>
+                                <span class="stat-item">Максимум: <strong id="memory-max">0</strong>%</span>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="memory-trend-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- График диска -->
+                    <div class="chart-container-large">
+                        <div class="chart-header">
+                            <h4><i class="fas fa-hdd"></i> Использование диска (%)</h4>
+                            <div class="chart-stats" id="disk-stats">
+                                <span class="stat-item">Текущая: <strong id="disk-current">0</strong>%</span>
+                                <span class="stat-item">Средняя: <strong id="disk-average">0</strong>%</span>
+                                <span class="stat-item">Максимум: <strong id="disk-max">0</strong>%</span>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="disk-trend-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка жалоб -->
+            <div id="complaints-tab" class="tab-content" style="display: none;">
+                <div class="header">
+                    <h1><i class="fas fa-exclamation-triangle"></i> Жалобы пользователей</h1>
+                    <p>Управление жалобами и обратной связью</p>
+                </div>
+
+                <!-- Статистика жалоб -->
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24);">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Всего жалоб</div>
+                                <div class="card-value" id="total-complaints">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(45deg, #4834d4, #686de0);">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Сегодня</div>
+                                <div class="card-value" id="today-complaints">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon" style="background: linear-gradient(45deg, #00b894, #00cec9);">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">Активных</div>
+                                <div class="card-value" id="active-complaints">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Фильтры -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Фильтры</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="type-filter" class="refresh-btn" style="background: white; color: #333; border: 1px solid #ddd;">
+                                <option value="">Все типы</option>
+                                <option value="SPAM">Спам</option>
+                                <option value="FAKE_PROFILE">Фейковый профиль</option>
+                                <option value="INSULT">Оскорбления</option>
+                                <option value="HARASSMENT">Домогательства</option>
+                                <option value="SCAM">Мошенничество</option>
+                                <option value="OTHER">Другое</option>
+                                <option value="IMPROVEMENTS">Улучшения</option>
+                                <option value="ISSUES">Проблемы</option>
+                            </select>
+                            <select id="category-filter" class="refresh-btn" style="background: white; color: #333; border: 1px solid #ddd;">
+                                <option value="">Все категории</option>
+                                <option value="complain">Жалобы</option>
+                                <option value="improve_and_problem">Предложения/Проблемы</option>
+                            </select>
+                            <button class="refresh-btn" onclick="refreshComplaints()">
+                                <i class="fas fa-sync-alt"></i> Обновить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список жалоб -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Список жалоб</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span id="complaints-count" style="color: #666; font-size: 14px;">Загрузка...</span>
+                            <button class="refresh-btn" onclick="refreshComplaintsStats()">
+                                <i class="fas fa-chart-bar"></i> Статистика
+                            </button>
+                            <button class="refresh-btn" onclick="exportComplaintsToCSV()" style="background: linear-gradient(45deg, #00b894, #00cec9);">
+                                <i class="fas fa-download"></i> Экспорт CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div id="complaints-container">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Загрузка жалоб...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
