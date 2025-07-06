@@ -13,8 +13,6 @@ const invites = require('./invites');
 const qr = require('./qr');
 const country = require('./country');
 const deleteAllData = require('./delete_all_data');
-const admin = require('./admin');
-
 module.exports = {
   auth,
   users,
@@ -29,6 +27,5 @@ module.exports = {
   invites,
   qr,
   country,
-  deleteAllData,
-  admin
+  deleteAllData
 }; 

@@ -28,8 +28,7 @@ const {
   complain, 
   invites, 
   qr, 
-  deleteAllData,
-  admin
+  deleteAllData
 } = require('./modules');
 
 // Extract specific routes and middleware
@@ -45,7 +44,6 @@ const { complaintRoutes } = complain;
 const { inviteRoutes } = invites;
 const { qrRoutes } = qr;
 const { deleteAllDataRoutes } = deleteAllData;
-const { router: adminRouter, init: adminInit } = admin;
 
 // Extract filter routes
 const fastMatchFilterRoutes = filterFastMatch.routes;
@@ -126,7 +124,7 @@ app.use('/api/users', (req, res, next) => {
 app.use('/api/images', getPhotosRoutes);
 
 // Статические файлы (фотографии)
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'infrastructure', 'uploads')));
 
 // Логирование конфигурации сервера
 console.log('[Server] Configuration:', {
@@ -189,8 +187,7 @@ app.use('/api/delete-all-user-data', (req, res, next) => {
   next();
 }, deleteAllDataRoutes);
 
-// Админка
-app.use('/admin', adminRouter);
+
 
 app.use(metricsMiddleware);
 app.get('/metrics', metricsEndpoint);
@@ -206,7 +203,6 @@ app.use((req, res) => {
   });
 });
 
-// Инициализация админки
-adminInit();
+
 
 module.exports = app; 

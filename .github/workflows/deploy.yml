@@ -38,30 +38,25 @@ jobs:
             echo "::error::SERVER_IP секрет не установлен"
             exit 1
           fi
-          if [ -z "${{ secrets.SERVER_PATH }}" ]; then
-            echo "::error::SERVER_PATH секрет не установлен"
-            exit 1
-          fi
           echo "✅ Все секреты установлены"
           
       - name: Create deployment archive
         run: |
-          echo "📦 Создание архива для zero-downtime deployment..."
+          echo "📦 Создание архива для deployment..."
           
           # Создаем временную директорию для архива
           mkdir -p temp_deploy
           
-          # Копируем только нужные файлы
-          cp -r app.js server.js package.json package-lock.json temp_deploy/
-          cp docker-compose.zero-downtime.yml temp_deploy/
-          cp -r auth config users matches fast_match marketprofiles qr complain one_night filter_* temp_deploy/ 2>/dev/null || true
-          cp -r invites delete_all_data country utils notifications temp_deploy/ 2>/dev/null || true
-          cp -r security scripts docs temp_deploy/ 2>/dev/null || true
+          # Копируем только папку src, исключая чувствительные данные
+          cp -r src temp_deploy/
+          
+          # Удаляем папки, которые не должны попасть в архив
+          cd temp_deploy/src
+          rm -rf node_modules logs backups infrastructure/uploads infrastructure/ssl
           
           # Создаем архив из временной директории
-          cd temp_deploy
-          tar -czf ../server_update.tar.gz .
-          cd ..
+          cd ../..
+          tar -czf server_update.tar.gz -C temp_deploy .
           
           echo "📊 Размер архива:"
           ls -lh server_update.tar.gz
@@ -74,24 +69,33 @@ jobs:
       - name: Copy files to server
         run: |
           echo "📤 Копирование файлов на сервер..."
-          scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/app/
+          scp -o StrictHostKeyChecking=no server_update.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }}:/root/app/
           
       - name: Execute zero-downtime deployment
         run: |
           echo "🚀 Запуск zero-downtime deployment..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd /app && bash zero_downtime_deploy.sh"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SERVER_IP }} "cd /root/app && bash zero_downtime_deploy.sh"
           
       - name: Verify deployment
         run: |
           echo "✅ Проверка успешности deployment..."
-          sleep 10
+          sleep 15
           
-          # Проверяем API
+          # Проверяем основной сервер
           API_RESPONSE=$(curl -s -L https://willowe.love/api/health || echo "FAIL")
-          if [[ "$API_RESPONSE" == *"success"* ]]; then
-            echo "✅ API работает корректно"
+          if [[ "$API_RESPONSE" == *"success"* ]] || [[ "$API_RESPONSE" == *"ok"* ]]; then
+            echo "✅ Основной сервер работает корректно"
           else
-            echo "❌ API не отвечает"
+            echo "❌ Основной сервер не отвечает"
+            exit 1
+          fi
+          
+          # Проверяем админку
+          ADMIN_RESPONSE=$(curl -s -L http://${{ secrets.SERVER_IP }}:3001 || echo "FAIL")
+          if [[ "$ADMIN_RESPONSE" != "FAIL" ]]; then
+            echo "✅ Админка работает корректно"
+          else
+            echo "❌ Админка не отвечает"
             exit 1
           fi
           
@@ -103,7 +107,8 @@ jobs:
           
       - name: Deployment Summary
         run: |
-          echo "🎉 Zero-downtime deployment завершен успешно!"
+          echo "🎉 Deployment завершен успешно!"
           echo "📅 Дата: $(date)"
           echo "🔗 API: https://willowe.love/api/health"
-          echo "📊 Время простоя: 0 секунд" 
+          echo "🔗 Админка: http://${{ secrets.SERVER_IP }}:3001"
+          echo "📊 Время простоя: минимальное" 

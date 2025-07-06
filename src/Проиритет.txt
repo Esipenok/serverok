@@ -1,3 +1,7 @@
+https://ap.www.namecheap.com/settings/personal-info - это где я покупал домен!!!!!
+
+
+
 1.C:\progects\willowe\auth - это регистрация. Ее приоритет средний
 2.C:\progects\willowe\complain - самый низки приоритет
 3.C:\progects\willowe\country - определение страны - низки приоритет

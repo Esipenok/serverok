@@ -52,7 +52,12 @@ exports.getAllComplaints = async (req, res) => {
   try {
     // Проверяем пароль администратора
     const adminPassword = req.headers['x-admin-password'] || req.query.password;
-    if (adminPassword !== 'qwe') {
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'qwe';
+    
+    if (adminPassword !== expectedPassword) {
+      console.log('Ошибка аутентификации в getAllComplaints:');
+      console.log('  - Полученный пароль:', adminPassword ? '***' : 'не указан');
+      console.log('  - Ожидаемый пароль:', expectedPassword);
       return res.status(401).json({ error: 'Неверный пароль администратора' });
     }
 
@@ -72,7 +77,12 @@ exports.getComplaintsStats = async (req, res) => {
   try {
     // Проверяем пароль администратора
     const adminPassword = req.headers['x-admin-password'] || req.query.password;
-    if (adminPassword !== 'qwe') {
+    const expectedPassword = process.env.ADMIN_PASSWORD || 'qwe';
+    
+    if (adminPassword !== expectedPassword) {
+      console.log('Ошибка аутентификации в getComplaintsStats:');
+      console.log('  - Полученный пароль:', adminPassword ? '***' : 'не указан');
+      console.log('  - Ожидаемый пароль:', expectedPassword);
       return res.status(401).json({ error: 'Неверный пароль администратора' });
     }
 

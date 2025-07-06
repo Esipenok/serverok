@@ -90,16 +90,16 @@ app.use(metricsMiddleware);
 app.get('/metrics', metricsEndpoint);
 
 // Доступ к загруженным изображениям 
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'infrastructure', 'uploads')));
 // Специально для голосовых сообщений
-app.use('/uploads/audio', express.static(path.join(__dirname, 'uploads/audio')));
+app.use('/uploads/audio', express.static(path.join(__dirname, 'infrastructure', 'uploads', 'audio')));
 // Для обратной совместимости
-app.use('/uploads/voice', express.static(path.join(__dirname, 'uploads/audio')));
+app.use('/uploads/voice', express.static(path.join(__dirname, 'infrastructure', 'uploads', 'audio')));
 
 // Настройка загрузки файлов
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, path.join(__dirname, 'infrastructure', 'uploads'));
   },
   filename: (req, file, cb) => {
     const fileExt = path.extname(file.originalname);
