@@ -31,24 +31,37 @@ rm /root/app/server_update.tar.gz
 # Переходим в директорию новой версии
 cd "$RELEASE_PATH"
 
+# Показываем содержимое распакованной папки
+echo "📁 Содержимое распакованной папки:"
+ls -la
+
 # Проверяем структуру
 if [ ! -d "src" ]; then
     echo "❌ Ошибка: Папка src не найдена в архиве"
     exit 1
 fi
 
+echo "📁 Содержимое папки src:"
+ls -la src/
+
 # Проверяем, нужна ли установка зависимостей
 echo "Проверка зависимостей..."
 if [ ! -d "/root/app/shared/node_modules" ] || [ ! -f "src/package.json" ]; then
     echo "Установка зависимостей..."
-    cd src
-    npm install --production
-    # Создаем shared директорию если её нет
-    mkdir -p /root/app/shared/node_modules
-    # Копируем node_modules в shared
-    cp -r node_modules/* /root/app/shared/node_modules/
-    rm -rf node_modules
-    cd ..
+    if [ -f "src/package.json" ]; then
+        cd src
+        npm install --production
+        # Создаем shared директорию если её нет
+        mkdir -p /root/app/shared/node_modules
+        # Копируем node_modules в shared
+        cp -r node_modules/* /root/app/shared/node_modules/
+        rm -rf node_modules
+        cd ..
+    else
+        echo "❌ Ошибка: package.json не найден в src/"
+        rm -rf "$RELEASE_PATH"
+        exit 1
+    fi
 else
     echo "Зависимости уже установлены в shared"
 fi
@@ -74,7 +87,7 @@ docker run --rm \
   -e KAFKA_CLIENT_ID=dating_app_producer \
   -e KAFKA_GROUP_ID=dating_app_consumer \
   node:18 \
-  bash -c "cd /app/src && node server.js --test"
+  bash -c "cd /app/src && npm install --production && node server.js --test"
 
 if [ $? -ne 0 ]; then
     echo "❌ Ошибка: Основной сервер не прошел проверку"
@@ -92,7 +105,7 @@ if [ -d "$RELEASE_PATH/src/adminka" ]; then
       -e NODE_ENV=production \
       -e PORT=3001 \
       node:18 \
-      sh -c "cd /app && node server.js --test"
+      sh -c "cd /app && npm install --production && node server.js --test"
     
     if [ $? -ne 0 ]; then
         echo "❌ Ошибка: Админка не прошла проверку"
@@ -169,7 +182,7 @@ docker run -d \
   -e KAFKA_CLIENT_ID=dating_app_producer \
   -e KAFKA_GROUP_ID=dating_app_consumer \
   node:18 \
-  bash -c 'npm install --production && node scripts/setup-kafka-topics.js && node server.js'
+  bash -c 'npm install --production && if [ -f "scripts/setup-kafka-topics.js" ]; then node scripts/setup-kafka-topics.js; fi && node server.js'
 
 # Админка
 docker run -d \

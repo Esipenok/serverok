@@ -12,6 +12,15 @@ Zero-downtime deployment система обеспечивает обновле�
 
 ### 1. Загрузка скриптов
 
+**Способ 1: Автоматическая загрузка (рекомендуется)**
+
+```powershell
+# На локальной машине
+powershell -ExecutionPolicy Bypass -File upload_scripts_to_server.ps1
+```
+
+**Способ 2: Ручная загрузка**
+
 ```bash
 # На сервере (46.62.131.90)
 cd /root/app
@@ -25,21 +34,37 @@ chmod +x setup_zero_downtime.sh
 chmod +x zero_downtime_deploy.sh
 ```
 
-**Альтернативный способ (если wget не работает):**
+**Способ 3: SCP загрузка**
 
 ```bash
 # Скопируйте файлы через SCP с локальной машины
 scp setup_zero_downtime.sh root@46.62.131.90:/root/app/
 scp zero_downtime_deploy.sh root@46.62.131.90:/root/app/
-
-# Или создайте файлы вручную через nano/vim
+chmod +x /root/app/setup_zero_downtime.sh /root/app/zero_downtime_deploy.sh
 ```
 
 ### 2. Первоначальная настройка
 
 ```bash
 # Запускаем настройку структуры
-bash setup_zero_downtime.sh
+bash /root/app/setup_zero_downtime.sh
+```
+
+**Важно:** После выполнения этой команды будет создана вся необходимая структура папок и скрипты для управления версиями.
+
+### 3. Проверка установки
+
+```bash
+# Проверяем структуру
+ls -la /root/app/
+
+# Проверяем скрипты
+ls -la /root/app/setup_zero_downtime.sh
+ls -la /root/app/zero_downtime_deploy.sh
+
+# Проверяем права доступа
+ls -la /root/app/rollback.sh
+ls -la /root/app/cleanup_old_releases.sh
 ```
 
 Это создаст:
@@ -50,7 +75,7 @@ bash setup_zero_downtime.sh
 - `/root/app/setup_zero_downtime.sh` - скрипт настройки
 - `/root/app/zero_downtime_deploy.sh` - скрипт деплоя
 
-### 3. Настройка GitHub Secrets
+### 4. Настройка GitHub Secrets
 
 В настройках репозитория GitHub (`Settings` → `Secrets and variables` → `Actions`) добавьте:
 

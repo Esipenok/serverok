@@ -61,6 +61,9 @@ jobs:
           echo "📊 Размер архива:"
           ls -lh server_update.tar.gz
           
+          echo "📁 Содержимое архива:"
+          tar -tzf server_update.tar.gz | head -20
+          
       - name: Test SSH connection
         run: |
           echo "🔗 Проверка SSH соединения..."
